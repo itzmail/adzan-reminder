@@ -5,12 +5,21 @@ class Adzan < Formula
   sha256 "7b17e14801a3c4b23b19cdcdb054a7026b4427c9760016ea8f560b05bb1680b1"
   version "0.1.0"
 
+  resource "adzan_sound" do
+    url "https://raw.githubusercontent.com/itzmail/adzan-reminder/main/assets/suara_bedug.mp3"
+    sha256 "ad06ceed5937b0e83a66dd2b8b33e139e787cf4fa4647921dac067a754623e6c"
+  end
+
   def install
     bin.install "adzan-macos" => "adzan"
 
-    # Copy assets (suara adzan)
+    # Buat folder assets
     (bin/"../assets").mkpath
-    (bin/"../assets").install "assets/suara_bedug.mp3"
+
+    # Download suara adzan dari URL publik (ganti dengan link MP3-mu yang stabil)
+    resource("adzan_sound").stage do
+      (bin/"../assets").install "suara_bedug.mp3"
+    end
   end
 
   test do
