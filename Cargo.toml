@@ -1,5 +1,5 @@
 [package]
-name = "adzan-reminder"
+name = "adzan"
 version = "0.1.0"
 description = "Aplikasi reminder jadwal sholat untuk Linux & macOS"
 authors = ["Ismail Nur Alam <ismailnuralam@gmail.com>"]
@@ -17,7 +17,7 @@ categories = ["command-line-utilities"]
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "adzan_reminder_lib"
+name = "adzan_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]

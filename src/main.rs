@@ -1,6 +1,6 @@
-use adzan_reminder_lib::helpers::notification::play_adzan;
-use adzan_reminder_lib::prayer_time::PrayerTimes;
-use adzan_reminder_lib::{send_prayer_notification, AppConfig, PrayerService};
+use adzan_lib::helpers::notification::play_adzan;
+use adzan_lib::prayer_time::PrayerTimes;
+use adzan_lib::{send_prayer_notification, AppConfig, PrayerService};
 use chrono::{Local, Timelike};
 use console::style;
 use console::Term;

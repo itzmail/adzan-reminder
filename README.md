@@ -1,15 +1,23 @@
 # Adzan Reminder CLI 🕌
 
-Reminder sholat otomatis untuk desktop (Linux, macOS, Windows).
+Reminder sholat otomatis untuk desktop (macOS, Linux, Windows).
 
 Fitur:
 - Jadwal akurat dari API MyQuran
-- Notification desktop
+- Notification desktop 5 menit sebelum & tepat waktu
 - Suara adzan/bedug
 - Daemon background
 - Auto-start saat boot
 
 ## Install
+
+### macOS (Homebrew)
+```bash
+brew tap ismailnuralam/adzan
+brew install adzan-reminder
+adzan set-city
+adzan setup-autostart
+```
 
 ### Running on Local Machine
 1. Clone repository
@@ -33,11 +41,3 @@ Fitur:
     ```bash
     ./target/release/adzan-reminder
     ```
-
-### macOS (Homebrew) (On Process)
-```bash
-brew tap ismailnuralam/adzan
-brew install adzan-reminder
-adzan set-city
-adzan setup-autostart
-```
