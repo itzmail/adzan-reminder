@@ -2,7 +2,7 @@ class Adzan < Formula
   desc "Adzan reminder CLI with notification and adzan sound"
   homepage "https://github.com/itzmail/adzan-reminder"
   url "https://github.com/itzmail/adzan-reminder/releases/download/v0.1.0/adzan-macos"
-  sha256 "sha256:7b17e14801a3c4b23b19cdcdb054a7026b4427c9760016ea8f560b05bb1680b1"
+  sha256 "7b17e14801a3c4b23b19cdcdb054a7026b4427c9760016ea8f560b05bb1680b1  target/release/adzan"
   version "0.1.0"
 
   def install
