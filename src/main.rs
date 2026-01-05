@@ -1,6 +1,7 @@
 use adzan_lib::helpers::notification::play_adzan;
 use adzan_lib::prayer_time::PrayerTimes;
 use adzan_lib::{send_prayer_notification, AppConfig, PrayerService};
+use atty::Stream;
 use chrono::{Local, Timelike};
 use console::style;
 use console::Term;
@@ -25,25 +26,16 @@ async fn main() {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() > 1 {
-        // Ada argumen → langsung jalankan command (bisa dari daemon atau manual)
-        match args[1].as_str() {
-            "today" => show_today_schedule().await,
-            "set-city" => set_city_interactive().await,
-            "current-city" => show_current_city().await,
-            "daemon" => run_daemon().await,
-            "setup-autostart" => {
-                setup_autostart().unwrap_or_else(|e| eprintln!("Error setup autostart: {}", e));
-            }
-            "about" => show_about(),
-            "--help" | "-h" => print_help(),
-            _ => print_help(),
-        }
+        // Ada argumen → langsung jalankan command
+        handle_command(&args[1..]).await;
     } else {
-      // if does not have arguments → check if terminal is available
-      if atty::is(atty::Stream::Stdout) {
+        // Tidak ada argumen
+        if atty::is(Stream::Stdout) {
+            // Ada terminal → tampilkan menu interaktif
             interactive_menu().await;
         } else {
-            println!("Jalan di background — mulai daemon");
+            // Tidak ada terminal → otomatis jalan daemon (untuk launchd/systemd)
+            println!("Adzan Reminder daemon jalan di background");
             run_daemon().await;
         }
     }
@@ -59,6 +51,21 @@ fn print_help() {
     println!("  setup-autostart - Setup auto-start saat boot");
     println!("  about         - Tentang app");
     println!("Tanpa argumen → menu interaktif");
+}
+
+async fn handle_command(args: &[String]) {
+    match args[0].as_str() {
+        "daemon" => run_daemon().await,
+        "setup-autostart" => {
+            setup_autostart().unwrap_or_else(|e| eprintln!("Error: {}", e));
+        }
+        "set-city" => set_city_interactive().await,
+        "today" => show_today_schedule().await,
+        "current-city" => show_current_city().await,
+        "about" => show_about(),
+        "--help" | "-h" => print_help(),
+        _ => print_help(),
+    }
 }
 
 async fn interactive_menu() {
