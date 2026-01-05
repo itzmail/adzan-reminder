@@ -10,7 +10,7 @@ class Adzan < Formula
 
     # Copy assets (suara adzan)
     (bin/"../assets").mkpath
-    (bin/"../assets").install "assets/adzan_bedug.mp3"
+    (bin/"../assets").install "assets/suara_bedug.mp3"
   end
 
   test do
