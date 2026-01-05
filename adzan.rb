@@ -16,13 +16,13 @@ class Adzan < Formula
     # Buat folder assets
     (bin/"../assets").mkpath
 
-    # Install suara adzan dari resource (handle nama file yang berubah)
+    # Install suara adzan dari resource (handle nama file apapun dari GitHub)
     resource("adzan_sound").stage do
-      mp3_file = Dir["*"].find { |f| f.end_with?(".mp3") }
-      if mp3_file
-        (bin/"../assets").install mp3_file => "suara_bedug.mp3"
+      downloaded_file = Dir["*"].first
+      if downloaded_file
+        (bin/"../assets").install downloaded_file => "suara_bedug.mp3"
       else
-        raise "File MP3 tidak ditemukan setelah download"
+        raise "File adzan tidak ditemukan setelah download dari GitHub raw"
       end
     end
   end
