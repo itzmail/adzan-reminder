@@ -9,10 +9,10 @@ use dirs;
 use skim::prelude::*;
 use skim::Skim;
 use std::collections::HashSet;
-use std::{fs, thread};
 use std::io::Cursor;
 use std::io::Write;
 use std::time::Duration;
+use std::{fs, thread};
 
 const BANNER: &str = r#"
 ▄▖ ▌        ▄▖     ▘   ▌      ▄▖▖ ▄▖
@@ -22,11 +22,51 @@ const BANNER: &str = r#"
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.len() > 1 {
+        // Ada argumen → langsung jalankan command (bisa dari daemon atau manual)
+        match args[1].as_str() {
+            "today" => show_today_schedule().await,
+            "set-city" => set_city_interactive().await,
+            "current-city" => show_current_city().await,
+            "daemon" => run_daemon().await,
+            "setup-autostart" => {
+                setup_autostart().unwrap_or_else(|e| eprintln!("Error setup autostart: {}", e));
+            }
+            "about" => show_about(),
+            "--help" | "-h" => print_help(),
+            _ => print_help(),
+        }
+    } else {
+      // if does not have arguments → check if terminal is available
+      if atty::is(atty::Stream::Stdout) {
+            interactive_menu().await;
+        } else {
+            println!("Jalan di background — mulai daemon");
+            run_daemon().await;
+        }
+    }
+}
+
+fn print_help() {
+    println!("Adzan Reminder CLI");
+    println!("Perintah:");
+    println!("  today         - Tampilkan jadwal hari ini");
+    println!("  set-city      - Pilih kota");
+    println!("  current-city  - Lihat kota terpilih");
+    println!("  daemon        - Jalankan daemon");
+    println!("  setup-autostart - Setup auto-start saat boot");
+    println!("  about         - Tentang app");
+    println!("Tanpa argumen → menu interaktif");
+}
+
+async fn interactive_menu() {
     let term = Term::stdout();
     let theme = ColorfulTheme::default();
 
     loop {
-        term.clear_screen().unwrap();
+        term.clear_screen().unwrap_or(());
         println!("{}", console::style(BANNER).cyan().bold());
         println!("{}", console::style("Adzan Reminder CLI").green().bold());
         println!();
@@ -45,14 +85,16 @@ async fn main() {
             .items(&items)
             .default(0)
             .interact_on_opt(&term)
-            .unwrap();
+            .unwrap_or(None);
 
         match selection {
             Some(0) => show_today_schedule().await,
             Some(1) => set_city_interactive().await,
             Some(2) => show_current_city().await,
             Some(3) => run_daemon().await,
-            Some(4) => setup_autostart().unwrap_or(()),
+            Some(4) => {
+                setup_autostart().unwrap_or_else(|e| eprintln!("Error: {}", e));
+            }
             Some(5) => show_about(),
             Some(6) => {
                 println!("Keluar dari aplikasi. Semoga bermanfaat! 🕌");
@@ -316,7 +358,10 @@ WantedBy=default.target
     let mut file = fs::File::create(&service_path)?;
     file.write_all(service_content.as_bytes())?;
 
-    println!("✅ Service systemd berhasil dibuat di: {}", service_path.display());
+    println!(
+        "✅ Service systemd berhasil dibuat di: {}",
+        service_path.display()
+    );
     println!();
     println!("📋 Jalankan perintah berikut untuk mengaktifkan:");
     println!();
@@ -368,12 +413,18 @@ fn setup_launchd() -> Result<(), Box<dyn std::error::Error>> {
     let mut file = fs::File::create(&plist_path)?;
     file.write_all(plist_content.as_bytes())?;
 
-    println!("✅ Service launchd berhasil dibuat di: {}", plist_path.display());
+    println!(
+        "✅ Service launchd berhasil dibuat di: {}",
+        plist_path.display()
+    );
     println!();
     println!("📋 Jalankan perintah berikut untuk mengaktifkan:");
     println!();
     println!("┌─────────────────────────────────────────────────────────────────────────┐");
-    println!("│ launchctl load {}                        │", plist_path.display());
+    println!(
+        "│ launchctl load {}                        │",
+        plist_path.display()
+    );
     println!("└─────────────────────────────────────────────────────────────────────────┘");
     println!();
     println!("💡 Tips: Copy paste perintah di atas ke terminal");
