@@ -1,29 +1,21 @@
-name: Release Binary
+name: Release macOS Binary
 
 on:
   push:
     tags:
-      - 'v*.*.*'  # Trigger hanya saat push tag seperti v0.1.0
+      - 'v*.*.*'
 
 jobs:
-  build-release:
-    name: Build ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+  build-macos:
+    name: Build macOS ${{ matrix.arch }}
+    runs-on: macos-latest
     strategy:
       matrix:
         include:
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            name: adzan-macos
-          - os: macos-latest
-            target: aarch64-apple-darwin
+          - arch: x86_64
+            name: adzan-macos-x86_64
+          - arch: aarch64
             name: adzan-macos-arm64
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            name: adzan-linux
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            name: adzan-windows.exe
 
     steps:
       - name: Checkout repository
@@ -32,19 +24,17 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.arch }}-apple-darwin
 
       - name: Build binary
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.arch }}-apple-darwin
 
-      - name: Prepare artifact
+      - name: Rename binary
         run: |
-          cd target/${{ matrix.target }}/release
-          strip adzan || true  # strip hanya untuk Linux/macOS
+          cd target/${{ matrix.arch }}-apple-darwin/release
           mv adzan ${{ matrix.name }}
 
       - name: Upload binary to release
         uses: softprops/action-gh-release@v2
         with:
-          files: target/${{ matrix.target }}/release/${{ matrix.name }}
-          tag_name: ${{ github.ref_name }}
+          files: target/${{ matrix.arch }}-apple-darwin/release/${{ matrix.name }}
