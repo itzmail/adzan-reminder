@@ -14,9 +14,15 @@ class Adzan < Formula
   def install
     bin.install (Hardware::CPU.intel? ? "adzan-macos-x86_64" : "adzan-macos-arm64") => "adzan"
 
-    # Copy assets (suara adzan)
-    (bin/"../assets").mkpath
-    (bin/"../assets").install "assets/suara_bedug.mp3"
+    # Install suara adzan dari resource (handle nama file apapun dari GitHub)
+    resource("adzan_sound").stage do
+      downloaded_file = Dir["*"].first
+      if downloaded_file
+        (bin/"../assets").install downloaded_file => "suara_bedug.mp3"
+      else
+        raise "File adzan tidak ditemukan setelah download dari GitHub raw"
+      end
+    end
   end
 
   test do
