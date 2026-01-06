@@ -127,7 +127,7 @@ async fn run_daemon() {
     let city_id = match config.selected_city_id {
         Some(id) => id,
         None => {
-            eprintln!("Belum ada kota dipilih. Jalankan 'adzan set-city dulu' dulu.");
+            eprintln!("Belum ada kota dipilih. Jalankan 'adzan set-city' dulu.");
             return;
         }
     };
@@ -145,43 +145,46 @@ async fn run_daemon() {
 
     let prayer_times = PrayerTimes::from_schedule(&schedule);
 
-    println!(
-        "Jadwal {} berhasil dimuat. Daemon berjalan... \n",
-        city_name
-    );
+    println!("Jadwal {} berhasil dimuat. Daemon berjalan...\n", city_name);
 
     let mut reminded_five_min: HashSet<String> = HashSet::new();
     let mut reminded_exact: HashSet<String> = HashSet::new();
 
+    // Path adzan (dinamis dari lokasi binary)
+    let adzan_path = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("assets/suara_bedug.mp3");
+
     loop {
         if let Some(message) = prayer_times.check_reminder() {
             let prayer_name = message.split(' ').next().unwrap_or("Sholat").to_string();
-            let adzan_path = std::env::current_exe()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .join("assets/suara_bedug.mp3");
 
             if message.contains("sekarang") {
                 if !reminded_exact.contains(&prayer_name) {
-                    send_prayer_notification(&prayer_name, &message);
-                    play_adzan(&adzan_path);
+                    send_prayer_notification("Waktu Sholat Tiba!", &message);
+                    if adzan_path.exists() {
+                        play_adzan(&adzan_path);
+                    } else {
+                        eprintln!("File adzan tidak ditemukan: {:?}", adzan_path);
+                    }
                     reminded_exact.insert(prayer_name);
                 }
             } else if message.contains("5 menit lagi") {
                 if !reminded_five_min.contains(&prayer_name) {
-                    send_prayer_notification(&prayer_name, &message);
+                    send_prayer_notification("Sebentar Lagi Sholat", &message);
                     reminded_five_min.insert(prayer_name);
                 }
             }
         }
 
-        // Reset in midnight
+        // Reset di tengah malam
         let now = Local::now();
         if now.hour() == 0 && now.minute() == 0 {
             reminded_five_min.clear();
             reminded_exact.clear();
-            println!("Hari baru - reset reminder.");
+            println!("Hari baru — reset reminder.");
         }
 
         std::thread::sleep(Duration::from_secs(60));
