@@ -4,11 +4,11 @@ class Adzan < Formula
   version "0.1.2"
 
   if Hardware::CPU.intel?
-    url "https://github.com/itzmail/adzan-reminder/releases/download/v0.1.2/adzan-macos-x86_64"
-    sha256 "b98abf29e7cbe64598a74d5fe2842d22202d630e31a46c4974903e5b86f148b0"
+    url "https://github.com/itzmail/adzan-reminder/releases/download/v0.1.4/adzan-macos-x86_64"
+    sha256 "300ca5057f43f2ac72563f97b179547ad4fe1a9d569fda069c5ddbc22f099311"
   else
-    url "https://github.com/itzmail/adzan-reminder/releases/download/v0.1.2/adzan-macos-arm64"
-    sha256 "0a5bbde81f282669431129959164263ce56239b89908b786a78b9fceb12b4919"
+    url "https://github.com/itzmail/adzan-reminder/releases/download/v0.1.4/adzan-macos-arm64"
+    sha256 "b736d2cd607b946280bed36b68368199ec1eb869f000ded6bc6c1e159307b56e"
   end
 
   resource "adzan_sound" do
