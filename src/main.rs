@@ -2,7 +2,7 @@ use adzan_lib::helpers::notification::play_adzan;
 use adzan_lib::prayer_time::PrayerTimes;
 use adzan_lib::{send_prayer_notification, AppConfig, PrayerService};
 use atty::Stream;
-use chrono::{Local, Timelike};
+use chrono::{Local, NaiveTime, Timelike};
 use console::style;
 use console::Term;
 use dialoguer::{theme::ColorfulTheme, Select};
@@ -144,18 +144,28 @@ async fn run_daemon() {
     };
 
     let prayer_times = PrayerTimes::from_schedule(&schedule);
-
     println!("Jadwal {} berhasil dimuat. Daemon berjalan...\n", city_name);
+
+    // --- PERSIAPAN DATA WAKTU SHOLAT (Untuk Countdown) ---
+    // Kita ambil jadwal hari ini (asumsi data pertama di map adalah hari ini)
+    // Simpan dalam vector tuple (Nama Sholat, String Waktu)
+    let raw_schedule = schedule.data.jadwal.values().next();
+    let prayer_list: Vec<(&str, &String)> = match raw_schedule {
+        Some(j) => vec![
+            ("Subuh", &j.subuh),
+            ("Dzuhur", &j.dzuhur),
+            ("Ashar", &j.ashar),
+            ("Maghrib", &j.maghrib),
+            ("Isya", &j.isya),
+        ],
+        None => vec![],
+    };
+    // -----------------------------------------------------
 
     let mut reminded_five_min: HashSet<String> = HashSet::new();
     let mut reminded_exact: HashSet<String> = HashSet::new();
 
-    // Path adzan (dinamis dari lokasi binary)
-    let adzan_path = std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("assets/suara_bedug.mp3");
+    // Hapus variabel adzan_path karena kita sudah pakai embedded bytes (sesuai diskusi sebelumnya)
 
     loop {
         if let Some(message) = prayer_times.check_reminder() {
@@ -164,23 +174,55 @@ async fn run_daemon() {
             if message.contains("sekarang") {
                 if !reminded_exact.contains(&prayer_name) {
                     send_prayer_notification("Waktu Sholat Tiba!", &message);
-                    if adzan_path.exists() {
-                        play_adzan(&adzan_path);
-                    } else {
-                        eprintln!("File adzan tidak ditemukan: {:?}", adzan_path);
-                    }
-                    reminded_exact.insert(prayer_name);
+                    play_adzan();
+
+                    reminded_exact.insert(prayer_name.clone());
+
+                    println!("🔊 Memainkan Adzan untuk {}", prayer_name);
                 }
             } else if message.contains("5 menit lagi") {
                 if !reminded_five_min.contains(&prayer_name) {
                     send_prayer_notification("Sebentar Lagi Sholat", &message);
-                    reminded_five_min.insert(prayer_name);
+
+                    reminded_five_min.insert(prayer_name.clone());
+
+                    println!("⚠️ Reminder 5 menit untuk {}", prayer_name);
                 }
             }
         }
 
-        // Reset di tengah malam
+        // Countdown
         let now = Local::now();
+        let mut found_next = false;
+
+        for (name, time_str) in &prayer_list {
+            if let Ok(parsed_time) = NaiveTime::parse_from_str(time_str, "%H:%M") {
+                let p_datetime = now
+                    .date_naive()
+                    .and_time(parsed_time)
+                    .and_local_timezone(Local)
+                    .unwrap();
+
+                if p_datetime > now {
+                    let duration = p_datetime.signed_duration_since(now);
+                    let hours = duration.num_hours();
+                    let minutes = duration.num_minutes() % 60;
+
+                    println!(
+                        "⏳ Menuju {}: {:02} jam {:02} menit lagi ({})",
+                        name, hours, minutes, time_str
+                    );
+                    found_next = true;
+                    break;
+                }
+            }
+        }
+
+        if !found_next {
+            println!("🌙 Semua jadwal hari ini sudah terlewati. Menunggu besok.");
+        }
+
+        // 3. Reset di tengah malam
         if now.hour() == 0 && now.minute() == 0 {
             reminded_five_min.clear();
             reminded_exact.clear();
