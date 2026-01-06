@@ -1,0 +1,50 @@
+name: Release Binary
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger hanya saat push tag seperti v0.1.0
+
+jobs:
+  build-release:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            name: adzan-macos
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: adzan-macos-arm64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            name: adzan-linux
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: adzan-windows.exe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare artifact
+        run: |
+          cd target/${{ matrix.target }}/release
+          strip adzan || true  # strip hanya untuk Linux/macOS
+          mv adzan ${{ matrix.name }}
+
+      - name: Upload binary to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/${{ matrix.target }}/release/${{ matrix.name }}
+          tag_name: ${{ github.ref_name }}
