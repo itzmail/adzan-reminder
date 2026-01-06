@@ -1,7 +1,7 @@
 class Adzan < Formula
   desc "Adzan reminder CLI with notification and adzan sound"
   homepage "https://github.com/itzmail/adzan-reminder"
-  version "0.1.2"
+  version "0.1.4"
 
   if Hardware::CPU.intel?
     url "https://github.com/itzmail/adzan-reminder/releases/download/v0.1.4/adzan-macos-x86_64"
