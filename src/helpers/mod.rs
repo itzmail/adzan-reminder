@@ -1,2 +1,2 @@
-pub mod serde_helpers;
 pub mod notification;
+pub mod serde_helpers;

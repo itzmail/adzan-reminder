@@ -1,6 +1,6 @@
-use crate::domain::entities::{Kota, JadwalResponse};
-use crate::infra::repository::{MyQuranRepository, PrayerRepository};
+use crate::domain::entities::{JadwalResponse, Kota};
 use crate::error::AppError;
+use crate::infra::repository::{MyQuranRepository, PrayerRepository};
 
 pub struct PrayerService {
     repo: Box<dyn PrayerRepository>,
@@ -15,7 +15,7 @@ impl PrayerService {
 
     #[cfg(test)]
     pub fn with_repo(repo: Box<dyn PrayerRepository>) -> Self {
-      Self { repo }
+        Self { repo }
     }
 
     pub async fn get_cities(&self) -> Result<Vec<Kota>, AppError> {

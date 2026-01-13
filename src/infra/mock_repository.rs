@@ -1,7 +1,7 @@
-use mockall::mock;
 use async_trait::async_trait;
+use mockall::mock;
 
-use crate::domain::entities::{Kota, JadwalResponse};
+use crate::domain::entities::{JadwalResponse, Kota};
 use crate::error::AppError;
 use crate::infra::repository::PrayerRepository;
 

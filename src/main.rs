@@ -146,22 +146,6 @@ async fn run_daemon() {
     let prayer_times = PrayerTimes::from_schedule(&schedule);
     println!("Jadwal {} berhasil dimuat. Daemon berjalan...\n", city_name);
 
-    // --- PERSIAPAN DATA WAKTU SHOLAT (Untuk Countdown) ---
-    // Kita ambil jadwal hari ini (asumsi data pertama di map adalah hari ini)
-    // Simpan dalam vector tuple (Nama Sholat, String Waktu)
-    let raw_schedule = schedule.data.jadwal.values().next();
-    let prayer_list: Vec<(&str, &String)> = match raw_schedule {
-        Some(j) => vec![
-            ("Subuh", &j.subuh),
-            ("Dzuhur", &j.dzuhur),
-            ("Ashar", &j.ashar),
-            ("Maghrib", &j.maghrib),
-            ("Isya", &j.isya),
-        ],
-        None => vec![],
-    };
-    // -----------------------------------------------------
-
     let mut reminded_five_min: HashSet<String> = HashSet::new();
     let mut reminded_exact: HashSet<String> = HashSet::new();
 
@@ -191,38 +175,8 @@ async fn run_daemon() {
             }
         }
 
-        // Countdown
-        let now = Local::now();
-        let mut found_next = false;
-
-        for (name, time_str) in &prayer_list {
-            if let Ok(parsed_time) = NaiveTime::parse_from_str(time_str, "%H:%M") {
-                let p_datetime = now
-                    .date_naive()
-                    .and_time(parsed_time)
-                    .and_local_timezone(Local)
-                    .unwrap();
-
-                if p_datetime > now {
-                    let duration = p_datetime.signed_duration_since(now);
-                    let hours = duration.num_hours();
-                    let minutes = duration.num_minutes() % 60;
-
-                    println!(
-                        "⏳ Menuju {}: {:02} jam {:02} menit lagi ({})",
-                        name, hours, minutes, time_str
-                    );
-                    found_next = true;
-                    break;
-                }
-            }
-        }
-
-        if !found_next {
-            println!("🌙 Semua jadwal hari ini sudah terlewati. Menunggu besok.");
-        }
-
         // 3. Reset di tengah malam
+        let now = Local::now();
         if now.hour() == 0 && now.minute() == 0 {
             reminded_five_min.clear();
             reminded_exact.clear();
@@ -267,6 +221,79 @@ async fn show_today_schedule() {
                         println!("Ashar   : {}", jadwal_hari.ashar);
                         println!("Maghrib : {}", jadwal_hari.maghrib);
                         println!("Isya    : {}", jadwal_hari.isya);
+
+                        // --- Tambahkan Countdown ke Sholat Berikutnya ---
+                        println!();
+                        println!("⏰ Countdown ke Sholat Berikutnya:");
+                        println!("──────────────────────────────");
+
+                        let now = Local::now();
+                        let prayer_list: Vec<(&str, &String)> = vec![
+                            ("Subuh", &jadwal_hari.subuh),
+                            ("Dzuhur", &jadwal_hari.dzuhur),
+                            ("Ashar", &jadwal_hari.ashar),
+                            ("Maghrib", &jadwal_hari.maghrib),
+                            ("Isya", &jadwal_hari.isya),
+                        ];
+
+                        let mut found_next = false;
+
+                        for (name, time_str) in &prayer_list {
+                            if let Ok(parsed_time) = NaiveTime::parse_from_str(time_str, "%H:%M") {
+                                let p_datetime = now
+                                    .date_naive()
+                                    .and_time(parsed_time)
+                                    .and_local_timezone(Local)
+                                    .unwrap();
+
+                                if p_datetime > now {
+                                    let duration = p_datetime.signed_duration_since(now);
+                                    let hours = duration.num_hours();
+                                    let minutes = duration.num_minutes() % 60;
+
+                                    println!(
+                                        "{} {} <- ({:02} jam {:02} menit lagi)",
+                                        console::style(name).green().bold(),
+                                        console::style(time_str).cyan(),
+                                        hours,
+                                        minutes
+                                    );
+                                    found_next = true;
+                                } else {
+                                    // Sholat yang sudah lewat
+                                    println!(
+                                        "{} {} ✓",
+                                        console::style(name).dim(),
+                                        console::style(time_str).dim()
+                                    );
+                                }
+                            }
+                        }
+
+                        if !found_next {
+                            println!("🌙 Semua jadwal hari ini sudah terlewati.");
+                        }
+
+                        // Cek reminder aktif
+                        let prayer_times = PrayerTimes::from_schedule(&schedule);
+                        if let Some(message) = prayer_times.check_reminder() {
+                            println!();
+                            println!("🔔 Reminder Aktif:");
+                            println!("──────────────────────────────");
+                            if message.contains("sekarang") {
+                                println!(
+                                    "{} {}",
+                                    console::style("🕌 WAKTU SHOLAT TIBA!").red().bold(),
+                                    console::style(&message).yellow()
+                                );
+                            } else if message.contains("5 menit lagi") {
+                                println!(
+                                    "{} {}",
+                                    console::style("⚠️ 5 MENIT LAGI!").yellow().bold(),
+                                    console::style(&message).cyan()
+                                );
+                            }
+                        }
                     } else {
                         println!("Tidak ada data jadwal tersedia");
                     }
