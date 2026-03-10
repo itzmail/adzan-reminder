@@ -34,7 +34,7 @@ impl PrayerTimes {
         }
     }
 
-    pub fn check_reminder(&self) -> Option<String> {
+    pub fn check_reminder(&self, notification_time: u32) -> Option<String> {
         let now = Local::now().time();
 
         for &prayer in &PRAYER_TIMES {
@@ -56,9 +56,12 @@ impl PrayerTimes {
                 return Some(format!("Waktu {} sekarang! Ayo sholat 🕌", prayer));
             }
 
-            // 5 menit sebelum
-            if now_minutes == prayer_minutes - 5 {
-                return Some(format!("{} 5 menit lagi! Siap-siap sholat yuk 🕌", prayer));
+            // X menit sebelum
+            if notification_time > 0 && now_minutes == prayer_minutes - (notification_time as i32) {
+                return Some(format!(
+                    "{} {} menit lagi! Siap-siap sholat yuk 🕌",
+                    prayer, notification_time
+                ));
             }
         }
 

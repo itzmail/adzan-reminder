@@ -1,0 +1,41 @@
+{
+    "hadist_prioritas": [
+        {
+            "perawi": "HR. Bukhari & Muslim",
+            "teks_indo": "Amalan yang paling dicintai Allah adalah shalat pada waktunya.",
+            "konteks": "Keutamaan waktu"
+        },
+        {
+            "perawi": "HR. Tirmidzi",
+            "teks_indo": "Ridha Allah ada pada awal waktu shalat, sedangkan ampunan-Nya ada di akhir waktu.",
+            "konteks": "Mengejar ridha vs ampunan"
+        },
+        {
+            "perawi": "QS. Al-Ma'un: 4-5",
+            "teks_indo": "Maka celakalah bagi orang-orang yang shalat, (yaitu) orang-orang yang lalai dari shalatnya.",
+            "konteks": "Peringatan menunda shalat"
+        }
+    ],
+    "quotes_sindiran": [
+        {
+            "level": "halus",
+            "content": "Hebat ya, meeting sama klien bisa on-time, meeting sama Yang Punya Rezeki kok ditaruh di sisa waktu?"
+        },
+        {
+            "level": "jenaka",
+            "content": "Laptop lowbat langsung panik cari colokan, giliran iman lowbat denger adzan malah lanjut scrolldown."
+        },
+        {
+            "level": "pedas",
+            "content": "Malaikat maut nggak bakal nunggu kamu selesai kirim email buat narik nyawa. Close tab, buka sajadah."
+        },
+        {
+            "level": "filosofis",
+            "content": "Jadikan kerjaanmu selingan di antara waktu shalat, bukan shalat sebagai selingan di sela kerjaan."
+        },
+        {
+            "level": "satir",
+            "content": "Cari muka di depan bos mati-matian, padahal yang punya jabatan lagi manggil lewat toa masjid."
+        }
+    ]
+}

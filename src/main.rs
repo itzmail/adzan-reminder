@@ -1,6 +1,6 @@
 use adzan_lib::helpers::notification::play_adzan;
 use adzan_lib::prayer_time::PrayerTimes;
-use adzan_lib::{send_prayer_notification, AppConfig, PrayerService};
+use adzan_lib::{AppConfig, PrayerService};
 use atty::Stream;
 use chrono::{Local, NaiveTime, Timelike};
 use console::style;
@@ -80,12 +80,11 @@ async fn interactive_menu() {
 
         let items = vec![
             "1. Tampilkan jadwal hari ini",
-            "2. Pilih kota",
+            "2. Menu Settings",
             "3. Lihat kota terpilih",
             "4. Run Daemon",
-            "5. Setup Autostart",
-            "6. About",
-            "7. Keluar",
+            "5. About",
+            "6. Keluar",
         ];
 
         let selection = Select::with_theme(&theme)
@@ -96,14 +95,11 @@ async fn interactive_menu() {
 
         match selection {
             Some(0) => show_today_schedule().await,
-            Some(1) => set_city_interactive().await,
+            Some(1) => settings_menu().await,
             Some(2) => show_current_city().await,
             Some(3) => run_daemon().await,
-            Some(4) => {
-                setup_autostart().unwrap_or_else(|e| eprintln!("Error: {}", e));
-            }
-            Some(5) => show_about(),
-            Some(6) => {
+            Some(4) => show_about(),
+            Some(5) => {
                 println!("Keluar dari aplikasi. Semoga bermanfaat! 🕌");
                 break;
             }
@@ -117,14 +113,142 @@ async fn interactive_menu() {
     }
 }
 
+async fn settings_menu() {
+    let term = Term::stdout();
+    let theme = ColorfulTheme::default();
+
+    loop {
+        term.clear_screen().unwrap_or(());
+        println!("{}", console::style("⚙️  Menu Settings").cyan().bold());
+        println!();
+
+        let items = vec![
+            "1. Ubah Kota",
+            "2. Ubah Waktu Peringatan Awal (Menit)",
+            "3. Pilih Suara Adzan",
+            "4. Test Notifikasi & Suara",
+            "5. Setup Daemon Autostart (OS)",
+            "6. Kembali ke Menu Utama",
+        ];
+
+        let selection = Select::with_theme(&theme)
+            .items(&items)
+            .default(0)
+            .interact_on_opt(&term)
+            .unwrap_or(None);
+
+        match selection {
+            Some(0) => set_city_interactive().await,
+            Some(1) => set_notification_time_interactive(),
+            Some(2) => set_sound_interactive(),
+            Some(3) => test_notification_interactive(),
+            Some(4) => {
+                setup_autostart().unwrap_or_else(|e| eprintln!("Error: {}", e));
+                println!("\nTekan Enter untuk melanjutkan...");
+                let _ = term.read_line();
+            }
+            Some(5) | None => break,
+            _ => unreachable!(),
+        }
+    }
+}
+
+fn set_notification_time_interactive() {
+    let mut config = AppConfig::load().unwrap_or_default();
+
+    let input: String = dialoguer::Input::new()
+        .with_prompt("Masukkan menit untuk pengingat sebelum sholat (0 = matikan)")
+        .default(config.notification_time.to_string())
+        .interact_text()
+        .unwrap();
+
+    if let Ok(m) = input.parse::<u32>() {
+        config.notification_time = m;
+        if let Err(e) = config.save() {
+            eprintln!("Gagal menyimpan config: {}", e);
+        } else {
+            println!(
+                "✅ Waktu peringatan berhasil diatur menjadi {} menit sebelum sholat",
+                m
+            );
+        }
+    } else {
+        println!("❌ Input tidak valid");
+    }
+
+    let term = Term::stdout();
+    println!("\nTekan Enter untuk melanjutkan...");
+    let _ = term.read_line();
+}
+
+fn set_sound_interactive() {
+    let mut config = AppConfig::load().unwrap_or_default();
+    let theme = ColorfulTheme::default();
+
+    println!("Pilih suara untuk Notifikasi Sholat:");
+    let sounds = vec!["Bedug", "Adzan Mecca", "Adzan Shubuh Abu Hazim", "Mute"];
+
+    // tentukan default
+    let default_idx = match config.sound_choice.as_str() {
+        "bedug" => 0,
+        "adzan_mecca" => 1,
+        "adzan_shubuh" => 2,
+        "mute" => 3,
+        _ => 0,
+    };
+
+    let selection = Select::with_theme(&theme)
+        .items(&sounds)
+        .default(default_idx)
+        .interact()
+        .unwrap();
+
+    let choice = match selection {
+        0 => "bedug",
+        1 => "adzan_mecca",
+        2 => "adzan_shubuh",
+        3 => "mute",
+        _ => "bedug",
+    };
+
+    config.sound_choice = choice.to_string();
+    if let Err(e) = config.save() {
+        eprintln!("Gagal menyimpan config: {}", e);
+    } else {
+        println!("✅ Suara berhasil diubah ke: {}", sounds[selection]);
+    }
+
+    let term = Term::stdout();
+    println!("\nTekan Enter untuk melanjutkan...");
+    let _ = term.read_line();
+}
+
+fn test_notification_interactive() {
+    println!("🔔 Menjalankan Test Notifikasi...");
+
+    let config = AppConfig::load().unwrap_or_default();
+
+    let alert_msg = adzan_lib::helpers::quotes::get_random_message();
+    adzan_lib::helpers::notification::play_adzan(config.sound_choice.clone(), alert_msg);
+
+    println!("✅ Test selesai dikirim. (Tutup dialog putih untuk mematikan suara uji coba)");
+
+    let term = Term::stdout();
+    println!("\nTekan Enter untuk kembali...");
+    let _ = term.read_line();
+}
+
 async fn run_daemon() {
     println!("🕌 Adzan Reminder daemon mulai...");
-    println!("Reminder: 5 menit sebelum & tepat waktu sholat");
     println!("Tekan Ctrl+C untuk berhenti.\n");
 
     let config = AppConfig::load().unwrap_or_default();
 
-    let city_id = match config.selected_city_id {
+    println!("Setting aktif:");
+    println!("- Peringatan awal: {} menit", config.notification_time);
+    println!("- Suara sholat:    {}", config.sound_choice);
+
+    let city_id = match config.selected_city_id.clone() {
         Some(id) => id,
         None => {
             eprintln!("Belum ada kota dipilih. Jalankan 'adzan set-city' dulu.");
@@ -149,28 +273,36 @@ async fn run_daemon() {
     let mut reminded_five_min: HashSet<String> = HashSet::new();
     let mut reminded_exact: HashSet<String> = HashSet::new();
 
-    // Hapus variabel adzan_path karena kita sudah pakai embedded bytes (sesuai diskusi sebelumnya)
-
     loop {
-        if let Some(message) = prayer_times.check_reminder() {
+        // Here we read config again so it supports hot-reloading setting
+        let r_config = AppConfig::load().unwrap_or_default();
+
+        if let Some(message) = prayer_times.check_reminder(r_config.notification_time) {
             let prayer_name = message.split(' ').next().unwrap_or("Sholat").to_string();
 
             if message.contains("sekarang") {
                 if !reminded_exact.contains(&prayer_name) {
-                    send_prayer_notification("Waktu Sholat Tiba!", &message);
-                    play_adzan();
+                    let alert_msg = adzan_lib::helpers::quotes::get_random_message();
+                    play_adzan(r_config.sound_choice.clone(), alert_msg);
 
                     reminded_exact.insert(prayer_name.clone());
 
-                    println!("🔊 Memainkan Adzan untuk {}", prayer_name);
+                    println!("🔊 Memainkan Adzan/Suara untuk {}", prayer_name);
                 }
-            } else if message.contains("5 menit lagi") {
+            } else if message.contains("menit lagi") {
                 if !reminded_five_min.contains(&prayer_name) {
-                    send_prayer_notification("Sebentar Lagi Sholat", &message);
+                    #[cfg(target_os = "macos")]
+                    adzan_lib::helpers::notification::show_macos_reminder(
+                        "Sebentar Lagi Sholat",
+                        &message,
+                    );
 
                     reminded_five_min.insert(prayer_name.clone());
 
-                    println!("⚠️ Reminder 5 menit untuk {}", prayer_name);
+                    println!(
+                        "⚠️ Reminder {} menit untuk {}",
+                        r_config.notification_time, prayer_name
+                    );
                 }
             }
         }
@@ -276,7 +408,8 @@ async fn show_today_schedule() {
 
                         // Cek reminder aktif
                         let prayer_times = PrayerTimes::from_schedule(&schedule);
-                        if let Some(message) = prayer_times.check_reminder() {
+                        if let Some(message) = prayer_times.check_reminder(config.notification_time)
+                        {
                             println!();
                             println!("🔔 Reminder Aktif:");
                             println!("──────────────────────────────");
@@ -286,10 +419,15 @@ async fn show_today_schedule() {
                                     console::style("🕌 WAKTU SHOLAT TIBA!").red().bold(),
                                     console::style(&message).yellow()
                                 );
-                            } else if message.contains("5 menit lagi") {
+                            } else if message.contains("menit lagi") {
                                 println!(
                                     "{} {}",
-                                    console::style("⚠️ 5 MENIT LAGI!").yellow().bold(),
+                                    console::style(format!(
+                                        "⚠️ {} MENIT LAGI!",
+                                        config.notification_time
+                                    ))
+                                    .yellow()
+                                    .bold(),
                                     console::style(&message).cyan()
                                 );
                             }

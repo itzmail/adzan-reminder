@@ -1,26 +1,75 @@
-use notify_rust::Notification;
 use rodio::{Decoder, OutputStreamBuilder, Sink};
 use std::io::Cursor;
 use std::thread;
 
-const ADZAN_BYTES: &[u8] = include_bytes!("../../assets/suara_bedug.mp3");
+const BEDUG_BYTES: &[u8] = include_bytes!("../../assets/suara_bedug.mp3");
+const ADZAN_SHUBUH_BYTES: &[u8] = include_bytes!("../../assets/Adzan-Shubuh-Abu-Hazim.mp3");
+const MECCA_BYTES: &[u8] = include_bytes!("../../assets/mecca_56_22.mp3");
 
-pub fn send_notification(title: &str, body: &str) {
-    let _ = Notification::new()
-        .summary(title)
-        .body(body)
-        .icon("appointment-soon")
-        .timeout(notify_rust::Timeout::Milliseconds(12000))
-        .show()
-        .map_err(|e| eprintln!("Gagal kirim notif: {}", e));
+#[cfg(target_os = "macos")]
+pub fn show_macos_reminder(title: &str, body: &str) {
+    let safe_title = title.replace("\"", "\\\"");
+    let safe_body = body.replace("\"", "\\\"");
+
+    // Gunakan static path sementara, ideally this configures a root dir if the app is packaged
+    let icon_path = "/Users/ismailalam/Development/my/adzan_reminder_cli/assets/mosque.icns";
+
+    let script = format!(
+        r#"
+        try
+            display dialog "{safe_body}" with title "{safe_title}" buttons {{"Tutup"}} default button "Tutup" with icon POSIX file "{icon_path}" giving up after 120
+        end try
+        "#
+    );
+
+    let _ = std::process::Command::new("osascript")
+        .arg("-e")
+        .arg(script)
+        .output();
 }
 
-pub fn send_prayer_notification(title: &str, body: &str) {
-    send_notification(title, body);
+#[cfg(target_os = "macos")]
+fn show_macos_alert(title: &str, body: &str) -> bool {
+    let safe_title = title.replace("\"", "\\\"");
+    let safe_body = body.replace("\"", "\\\"");
+
+    let icon_path = "/Users/ismailalam/Development/my/adzan_reminder_cli/assets/mosque.icns";
+
+    let script = format!(
+        r#"
+        try
+            set dialogResult to display dialog "{safe_body}" with title "{safe_title}" buttons {{"Tutup & Matikan Audio", "Biarkan"}} default button "Tutup & Matikan Audio" with icon POSIX file "{icon_path}" giving up after 120
+            if button returned of dialogResult is "Tutup & Matikan Audio" then
+                return "STOP"
+            end if
+        on error errStr
+            return "ERROR: " & errStr
+        end try
+        "#
+    );
+
+    if let Ok(output) = std::process::Command::new("osascript")
+        .arg("-e")
+        .arg(script)
+        .output()
+    {
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if stdout == "STOP" {
+            return true;
+        } else if stdout.starts_with("ERROR") {
+            eprintln!("AppleScript error: {}", stdout);
+        }
+    }
+
+    false
 }
 
-/// Play adzan MP3 (non-blocking)
-pub fn play_adzan() {
+/// Play adzan MP3 (non-blocking) and wait for AppleScript alert on macOS
+pub fn play_adzan(sound_choice: String, alert_body: String) {
+    if sound_choice == "mute" {
+        return;
+    }
+
     thread::spawn(move || {
         let stream_handle = match OutputStreamBuilder::open_default_stream() {
             Ok(handle) => handle,
@@ -32,13 +81,33 @@ pub fn play_adzan() {
 
         let sink = Sink::connect_new(&stream_handle.mixer());
 
-        // 3. Gunakan Cursor untuk membaca bytes dari memory seolah-olah itu file
-        let source_cursor = Cursor::new(ADZAN_BYTES);
+        let bytes = match sound_choice.as_str() {
+            "adzan_shubuh" => ADZAN_SHUBUH_BYTES,
+            "adzan_mecca" => MECCA_BYTES,
+            _ => BEDUG_BYTES, // default to bedug
+        };
+
+        let source_cursor = Cursor::new(bytes);
 
         match Decoder::new(source_cursor) {
             Ok(source) => {
                 sink.append(source);
-                sink.sleep_until_end();
+                sink.play();
+
+                #[cfg(target_os = "macos")]
+                {
+                    // Show a native blocking AppleScript dialog in this thread
+                    if show_macos_alert("Waktu Sholat Telah Tiba!", &alert_body) {
+                        sink.stop();
+                    } else {
+                        sink.sleep_until_end();
+                    }
+                }
+
+                #[cfg(not(target_os = "macos"))]
+                {
+                    sink.sleep_until_end();
+                }
             }
             Err(e) => {
                 eprintln!("Gagal decode MP3 embedded: {}", e);
