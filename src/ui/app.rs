@@ -36,6 +36,7 @@ pub struct App {
     pub selected_settings_index: usize,
     pub setting_state: SettingState,
     pub all_cities: Vec<Kota>,
+    pub latest_version: Option<String>, // None = belum dicek, Some = versi terbaru di GitHub
 }
 
 impl App {
@@ -53,6 +54,25 @@ impl App {
             }
         }
 
+        // Ambil versi terbaru dari GitHub di background thread (non-blocking)
+        let latest_version: Option<String> = std::thread::spawn(|| {
+            let target = self_update::get_target();
+            let bin_name = format!("adzan-{}", target);
+            self_update::backends::github::Update::configure()
+                .repo_owner("itzmail")
+                .repo_name("adzan-reminder")
+                .bin_name(&bin_name)
+                .show_output(false)
+                .show_download_progress(false)
+                .current_version(env!("CARGO_PKG_VERSION"))
+                .build()
+                .ok()
+                .and_then(|u| u.get_latest_release().ok())
+                .map(|r| r.version)
+        })
+        .join()
+        .unwrap_or(None);
+
         App {
             active_tab: Tab::Dashboard,
             config,
@@ -61,6 +81,7 @@ impl App {
             selected_settings_index: 0,
             setting_state: SettingState::Normal,
             all_cities,
+            latest_version,
         }
     }
 
@@ -315,10 +336,13 @@ impl App {
                     }
                     5 => {
                         let msg = match std::thread::spawn(|| {
+                            let target = self_update::get_target();
+                            let bin_name = format!("adzan-{}", target);
                             self_update::backends::github::Update::configure()
                                 .repo_owner("itzmail")
                                 .repo_name("adzan-reminder")
-                                .bin_name("adzan")
+                                .bin_name(&bin_name)
+                                .show_output(false)
                                 .show_download_progress(false)
                                 .current_version(env!("CARGO_PKG_VERSION"))
                                 .build()

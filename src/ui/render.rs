@@ -20,25 +20,54 @@ pub fn render(f: &mut Frame, app: &mut App) {
 }
 
 fn render_dashboard(f: &mut Frame, app: &mut App) {
+    let current_ver = env!("CARGO_PKG_VERSION");
+
+    // Cek apakah ada update yang tersedia
+    let update_banner = match &app.latest_version {
+        Some(latest) if latest.trim_start_matches('v') != current_ver => Some(latest.clone()),
+        _ => None,
+    };
+
+    // Jika ada update, tambah 1 baris ekstra untuk banner
+    let header_height = if update_banner.is_some() { 6 } else { 5 };
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
             [
-                Constraint::Length(5), // Header (Diperbesar)
-                Constraint::Length(5), // Schedule Summary (Kembalikan ke ukuran 5 baris)
-                Constraint::Min(0),    // Menu
+                Constraint::Length(header_height), // Header
+                Constraint::Length(5),             // Schedule Summary
+                Constraint::Min(0),                // Menu
             ]
             .as_ref(),
         )
         .split(f.area());
 
     // Header
-    let header = Paragraph::new("\n A D Z A N   R E M I N D E R   C L I \n")
-        .style(
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
+    let header_text = if let Some(ref latest) = update_banner {
+        format!(
+            "\n A D Z A N   R E M I N D E R   C L I \n\n ✨ Update tersedia: v{} → {} | Jalankan: adzan update ",
+            current_ver, latest
         )
+    } else {
+        format!(
+            "\n A D Z A N   R E M I N D E R   C L I   v{} \n",
+            current_ver
+        )
+    };
+
+    let header_style = if update_banner.is_some() {
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD)
+    };
+
+    let header = Paragraph::new(header_text)
+        .style(header_style)
         .alignment(Alignment::Center)
         .block(Block::default().borders(Borders::ALL));
     f.render_widget(header, chunks[0]);

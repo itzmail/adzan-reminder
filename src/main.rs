@@ -77,10 +77,15 @@ async fn handle_command(args: &[String]) {
 fn run_update() -> Result<(), Box<dyn std::error::Error>> {
     println!("Pencarian update terbaru dari GitHub...");
 
+    // bin_name harus cocok dengan prefix nama asset di GitHub release
+    // Format: adzan-{target}, contoh: adzan-aarch64-apple-darwin
+    let target = self_update::get_target();
+    let bin_name = format!("adzan-{}", target);
+
     let status = self_update::backends::github::Update::configure()
         .repo_owner("itzmail")
         .repo_name("adzan-reminder")
-        .bin_name("adzan")
+        .bin_name(&bin_name)
         .show_download_progress(true)
         .current_version(env!("CARGO_PKG_VERSION"))
         .build()?
