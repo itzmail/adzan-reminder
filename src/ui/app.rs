@@ -169,12 +169,12 @@ impl App {
                         let result = match selected_index {
                             0 => crate::setup_autostart(),
                             1 => crate::teardown_autostart(),
-                            _ => Ok(()), // Cancel
+                            _ => Ok(String::new()), // Cancel
                         };
 
                         if *selected_index != 2 {
                             let msg = match result {
-                                Ok(_) => "Operasi Daemon berhasil!".to_string(),
+                                Ok(m) => m,
                                 Err(e) => format!("Gagal: {}", e),
                             };
                             self.setting_state = SettingState::ShowingMessage(msg);
@@ -207,7 +207,7 @@ impl App {
                 }
                 KeyCode::Down | KeyCode::Char('j') => self.next_item(),
                 KeyCode::Up | KeyCode::Char('k') => self.previous_item(),
-                KeyCode::Enter => self.select_item().await,
+                KeyCode::Enter => return self.select_item().await,
                 _ => {}
             },
         }
@@ -266,13 +266,13 @@ impl App {
         }
     }
 
-    pub async fn select_item(&mut self) {
+    pub async fn select_item(&mut self) -> bool {
         match self.active_tab {
             Tab::Dashboard => match self.selected_menu_index {
                 0 => self.active_tab = Tab::Countdown,
                 1 => self.active_tab = Tab::Settings,
                 2 => self.active_tab = Tab::About,
-                3 => std::process::exit(0),
+                3 => return true,
                 _ => {}
             },
             Tab::Settings => {
@@ -346,6 +346,7 @@ impl App {
             }
             _ => {}
         }
+        false
     }
 
     pub fn settings_increase(&mut self) {

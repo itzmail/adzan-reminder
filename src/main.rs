@@ -49,10 +49,13 @@ fn print_help() {
 
 async fn handle_command(args: &[String]) {
     match args[0].as_str() {
+        "today" => show_today().await,
+        "current-city" => show_current_city(),
         "daemon" => run_daemon().await,
-        "setup-autostart" => {
-            setup_autostart().unwrap_or_else(|e| eprintln!("Error: {}", e));
-        }
+        "setup-autostart" => match setup_autostart() {
+            Ok(msg) => println!("{}", msg),
+            Err(e) => eprintln!("Error: {}", e),
+        },
         "update" => {
             let res = std::thread::spawn(|| run_update().map_err(|e| e.to_string())).join();
             match res {
@@ -63,7 +66,11 @@ async fn handle_command(args: &[String]) {
         }
         "about" => show_about(),
         "--help" | "-h" => print_help(),
-        _ => print_help(),
+        _ => {
+            eprintln!("Perintah '{}' tidak dikenal.", args[0]);
+            println!();
+            print_help();
+        }
     }
 }
 
@@ -94,6 +101,66 @@ fn run_update() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+async fn show_today() {
+    let config = AppConfig::load().unwrap_or_default();
+
+    let city_id = match config.selected_city_id.clone() {
+        Some(id) => id,
+        None => {
+            eprintln!("❌ Belum ada kota dipilih. Jalankan 'adzan' untuk set kota di TUI.");
+            return;
+        }
+    };
+
+    let city_name = config.selected_city_name.as_deref().unwrap_or("Kota");
+
+    print!("Mengambil jadwal sholat untuk {}...", city_name);
+    std::io::Write::flush(&mut std::io::stdout()).unwrap();
+
+    let service = PrayerService::new();
+    let schedule = match service.get_today_schedule(&city_id).await {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("\n❌ Gagal mengambil jadwal: {}", e);
+            return;
+        }
+    };
+
+    println!(" ✅");
+    println!();
+
+    if let Some((_, jadwal)) = schedule.data.jadwal.iter().next() {
+        println!("\n📅 JADWAL SHOLAT — {}", jadwal.tanggal);
+        println!("📍 {}", schedule.data.kabko);
+        println!("{}", "─".repeat(30)); // Garis pemisah tipis
+
+        // Menggunakan padding sederhana agar waktu tetap sejajar di kanan
+        let list_jadwal = [
+            ("Subuh", &jadwal.subuh),
+            ("Dzuhur", &jadwal.dzuhur),
+            ("Ashar", &jadwal.ashar),
+            ("Maghrib", &jadwal.maghrib),
+            ("Isya", &jadwal.isya),
+        ];
+
+        for (nama, waktu) in list_jadwal {
+            // {:<10} membuat nama sholat punya lebar 10 karakter rata kiri
+            // {:>10} membuat waktu punya lebar 10 karakter rata kanan
+            println!("  {:<10} │ {:>10}", nama, waktu);
+        }
+
+        println!("{}", "─".repeat(30));
+    }
+}
+
+fn show_current_city() {
+    let config = AppConfig::load().unwrap_or_default();
+    match config.selected_city_name {
+        Some(name) => println!("📍 Kota aktif: {}", name),
+        None => println!("❌ Belum ada kota dipilih. Jalankan 'adzan' untuk set kota di TUI."),
+    }
 }
 
 async fn run_daemon() {
@@ -177,17 +244,17 @@ async fn run_daemon() {
     }
 }
 
-fn setup_autostart() -> Result<(), Box<dyn std::error::Error>> {
+pub fn setup_autostart() -> Result<String, Box<dyn std::error::Error>> {
     #[cfg(target_os = "linux")]
     {
-        setup_systemd()?;
-        println!("Linux (systemd) setup done!");
-        println!("Run this command: \n systemctl --user enable --now adzan-reminder.service");
+        let mut msg = setup_systemd()?;
+        msg.push_str("\n\nLinux (systemd) setup done!\nRun this command: \n systemctl --user enable --now adzan-reminder.service");
+        Ok(msg)
     }
 
     #[cfg(target_os = "macos")]
     {
-        setup_launchd()?;
+        let mut msg = setup_launchd()?;
         // Try to load, silently failing if already loaded
         let plist_path = dirs::home_dir()
             .unwrap()
@@ -197,18 +264,17 @@ fn setup_autostart() -> Result<(), Box<dyn std::error::Error>> {
             .arg(&plist_path)
             .output();
 
-        println!("macos (launchd) setup done & daemon started");
+        msg.push_str("\n\nmacos (launchd) setup done & daemon started");
+        Ok(msg)
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
-        println!("Autostart setup not supported on this OS.");
+        Ok("Autostart setup not supported on this OS.".to_string())
     }
-
-    Ok(())
 }
 
-pub fn teardown_autostart() -> Result<(), Box<dyn std::error::Error>> {
+pub fn teardown_autostart() -> Result<String, Box<dyn std::error::Error>> {
     #[cfg(target_os = "linux")]
     {
         let _ = std::process::Command::new("systemctl")
@@ -227,6 +293,8 @@ pub fn teardown_autostart() -> Result<(), Box<dyn std::error::Error>> {
         let _ = std::process::Command::new("systemctl")
             .args(["--user", "daemon-reload"])
             .output();
+
+        return Ok("Daemon berhasil dihentikan dan dihapus dari systemd.".to_string());
     }
 
     #[cfg(target_os = "macos")]
@@ -243,9 +311,14 @@ pub fn teardown_autostart() -> Result<(), Box<dyn std::error::Error>> {
         if plist_path.exists() {
             std::fs::remove_file(plist_path)?;
         }
+
+        return Ok("Daemon berhasil dihentikan dan dihapus dari launchd.".to_string());
     }
 
-    Ok(())
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        return Ok("Autostart teardown not supported on this OS.".to_string());
+    }
 }
 
 pub fn restart_daemon() -> Result<(), Box<dyn std::error::Error>> {
@@ -287,7 +360,7 @@ pub fn restart_daemon() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[cfg(target_os = "linux")]
-fn setup_systemd() -> Result<(), Box<dyn std::error::Error>> {
+fn setup_systemd() -> Result<String, Box<dyn std::error::Error>> {
     let service_content = r#"[Unit]
 Description=Adzan Reminder Daemon
 After=network.target
@@ -310,25 +383,22 @@ WantedBy=default.target
     let mut file = fs::File::create(&service_path)?;
     file.write_all(service_content.as_bytes())?;
 
-    println!(
-        "✅ Service systemd berhasil dibuat di: {}",
+    let msg = format!(
+        "✅ Service systemd berhasil dibuat di: {}\n\n\
+        📋 Jalankan perintah berikut untuk mengaktifkan:\n\n\
+        ┌────────────────────────────────────────────────────────────────┐\n\
+        │ systemctl --user daemon-reload                                │\n\
+        │ systemctl --user enable --now adzan-reminder.service          │\n\
+        └────────────────────────────────────────────────────────────────┘\n\n\
+        💡 Tips: Copy paste perintah di atas satu per satu ke terminal",
         service_path.display()
     );
-    println!();
-    println!("📋 Jalankan perintah berikut untuk mengaktifkan:");
-    println!();
-    println!("┌────────────────────────────────────────────────────────────────┐");
-    println!("│ systemctl --user daemon-reload                                │");
-    println!("│ systemctl --user enable --now adzan-reminder.service          │");
-    println!("└────────────────────────────────────────────────────────────────┘");
-    println!();
-    println!("💡 Tips: Copy paste perintah di atas satu per satu ke terminal");
 
-    Ok(())
+    Ok(msg)
 }
 
 #[cfg(target_os = "macos")]
-fn setup_launchd() -> Result<(), Box<dyn std::error::Error>> {
+fn setup_launchd() -> Result<String, Box<dyn std::error::Error>> {
     let plist_content = format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -365,24 +435,19 @@ fn setup_launchd() -> Result<(), Box<dyn std::error::Error>> {
     let mut file = fs::File::create(&plist_path)?;
     file.write_all(plist_content.as_bytes())?;
 
-    println!(
-        "✅ Service launchd berhasil dibuat di: {}",
+    let msg = format!(
+        "✅ Service launchd berhasil dibuat di: {}\n\n\
+        📋 Jalankan perintah berikut untuk mengaktifkan:\n\n\
+        ┌─────────────────────────────────────────────────────────────────────────┐\n\
+        │ launchctl load {}                        │\n\
+        └─────────────────────────────────────────────────────────────────────────┘\n\n\
+        💡 Tips: Copy paste perintah di atas ke terminal\n\
+        📝 Log file akan tersimpan di: ~/Library/Logs/adzan.log",
+        plist_path.display(),
         plist_path.display()
     );
-    println!();
-    println!("📋 Jalankan perintah berikut untuk mengaktifkan:");
-    println!();
-    println!("┌─────────────────────────────────────────────────────────────────────────┐");
-    println!(
-        "│ launchctl load {}                        │",
-        plist_path.display()
-    );
-    println!("└─────────────────────────────────────────────────────────────────────────┘");
-    println!();
-    println!("💡 Tips: Copy paste perintah di atas ke terminal");
-    println!("📝 Log file akan tersimpan di: ~/Library/Logs/adzan.log");
 
-    Ok(())
+    Ok(msg)
 }
 
 fn show_about() {

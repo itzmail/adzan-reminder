@@ -372,7 +372,7 @@ fn render_settings(f: &mut Frame, app: &mut App) {
             f.render_stateful_widget(result_list, area, &mut state);
         }
         crate::ui::app::SettingState::ShowingMessage(msg) => {
-            let area = centered_rect(60, 40, f.area());
+            let area = centered_rect(70, 60, f.area());
             f.render_widget(Clear, area);
             let message_widget = Paragraph::new(msg.as_str())
                 .style(Style::default().fg(Color::White))
