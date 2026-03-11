@@ -28,14 +28,6 @@ Untuk menghapus aplikasi Adzan Reminder (termasuk mematikan daemon berjalan dan 
 curl -fsSL https://raw.githubusercontent.com/itzmail/adzan-reminder/main/uninstall.sh | bash
 ```
 
-### macOS (Homebrew)
-```bash
-brew tap itzmail/adzan
-brew install adzan-reminder
-adzan set-city
-adzan setup-autostart
-```
-
 ### Running on Local Machine
 1. Clone repository
     ```bash
