@@ -32,12 +32,12 @@ jobs:
       - name: Build binary
         run: cargo build --release --target ${{ matrix.arch }}-apple-darwin
 
-      - name: Rename binary
+      - name: Archive binary
         run: |
           cd target/${{ matrix.arch }}-apple-darwin/release
-          mv adzan ${{ matrix.name }}
+          tar -czf adzan-${{ matrix.arch }}-apple-darwin.tar.gz adzan
 
-      - name: Upload binary to release
+      - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: target/${{ matrix.arch }}-apple-darwin/release/${{ matrix.name }}
+          files: target/${{ matrix.arch }}-apple-darwin/release/adzan-${{ matrix.arch }}-apple-darwin.tar.gz

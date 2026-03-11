@@ -2,24 +2,15 @@ use adzan_lib::helpers::notification::play_adzan;
 use adzan_lib::prayer_time::PrayerTimes;
 use adzan_lib::{AppConfig, PrayerService};
 use atty::Stream;
-use chrono::{Local, NaiveTime, Timelike};
+use chrono::{Local, Timelike};
 use console::style;
-use console::Term;
-use dialoguer::{theme::ColorfulTheme, Select};
 use dirs;
-use skim::prelude::*;
-use skim::Skim;
 use std::collections::HashSet;
-use std::io::Cursor;
 use std::io::Write;
 use std::time::Duration;
 use std::{fs, thread};
 
-const BANNER: &str = r#"
-▄▖ ▌        ▄▖     ▘   ▌      ▄▖▖ ▄▖
-▌▌▛▌▀▌▀▌▛▌  ▙▘█▌▛▛▌▌▛▌▛▌█▌▛▘  ▌ ▌ ▐
-▛▌▙▌▙▖█▌▌▌  ▌▌▙▖▌▌▌▌▌▌▙▌▙▖▌   ▙▖▙▖▟▖
-"#;
+pub mod ui;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -31,8 +22,10 @@ async fn main() {
     } else {
         // Tidak ada argumen
         if atty::is(Stream::Stdout) {
-            // Ada terminal → tampilkan menu interaktif
-            interactive_menu().await;
+            // Ada terminal → tampilkan TUI (Terminal User Interface)
+            if let Err(e) = ui::run_tui().await {
+                eprintln!("TUI Error: {}", e);
+            }
         } else {
             // Tidak ada terminal → otomatis jalan daemon (untuk launchd/systemd)
             println!("Adzan Reminder daemon jalan di background");
@@ -42,15 +35,16 @@ async fn main() {
 }
 
 fn print_help() {
-    println!("Adzan Reminder CLI");
+    println!("Adzan Reminder CLI (TUI Mode Recommended)");
     println!("Perintah:");
     println!("  today         - Tampilkan jadwal hari ini");
-    println!("  set-city      - Pilih kota");
+    println!("  set-city      - (Pakai TUI via 'adzan' tanpa argumen untuk UI)");
     println!("  current-city  - Lihat kota terpilih");
     println!("  daemon        - Jalankan daemon");
     println!("  setup-autostart - Setup auto-start saat boot");
+    println!("  update        - Update aplikasi ke versi terbaru");
     println!("  about         - Tentang app");
-    println!("Tanpa argumen → menu interaktif");
+    println!("Tanpa argumen → Buka GUI/TUI Interaktif (Direkomendasikan)");
 }
 
 async fn handle_command(args: &[String]) {
@@ -59,183 +53,47 @@ async fn handle_command(args: &[String]) {
         "setup-autostart" => {
             setup_autostart().unwrap_or_else(|e| eprintln!("Error: {}", e));
         }
-        "set-city" => set_city_interactive().await,
-        "today" => show_today_schedule().await,
-        "current-city" => show_current_city().await,
+        "update" => {
+            let res = std::thread::spawn(|| run_update().map_err(|e| e.to_string())).join();
+            match res {
+                Ok(Err(e)) => eprintln!("Update gagal: {}", e),
+                Err(e) => eprintln!("Update thread panik! {:#?}", e),
+                _ => {}
+            }
+        }
         "about" => show_about(),
         "--help" | "-h" => print_help(),
         _ => print_help(),
     }
 }
 
-async fn interactive_menu() {
-    let term = Term::stdout();
-    let theme = ColorfulTheme::default();
+fn run_update() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Pencarian update terbaru dari GitHub...");
 
-    loop {
-        term.clear_screen().unwrap_or(());
-        println!("{}", console::style(BANNER).cyan().bold());
-        println!("{}", console::style("Adzan Reminder CLI").green().bold());
-        println!();
+    let status = self_update::backends::github::Update::configure()
+        .repo_owner("itzmail")
+        .repo_name("adzan-reminder")
+        .bin_name("adzan")
+        .show_download_progress(true)
+        .current_version(env!("CARGO_PKG_VERSION"))
+        .build()?
+        .update()?;
 
-        let items = vec![
-            "1. Tampilkan jadwal hari ini",
-            "2. Menu Settings",
-            "3. Lihat kota terpilih",
-            "4. Run Daemon",
-            "5. About",
-            "6. Keluar",
-        ];
-
-        let selection = Select::with_theme(&theme)
-            .items(&items)
-            .default(0)
-            .interact_on_opt(&term)
-            .unwrap_or(None);
-
-        match selection {
-            Some(0) => show_today_schedule().await,
-            Some(1) => settings_menu().await,
-            Some(2) => show_current_city().await,
-            Some(3) => run_daemon().await,
-            Some(4) => show_about(),
-            Some(5) => {
-                println!("Keluar dari aplikasi. Semoga bermanfaat! 🕌");
-                break;
-            }
-            None => break,
-            _ => unreachable!(),
-        }
-
-        println!();
-        println!("Tekan Enter untuk kembali ke menu...");
-        let _ = term.read_line();
-    }
-}
-
-async fn settings_menu() {
-    let term = Term::stdout();
-    let theme = ColorfulTheme::default();
-
-    loop {
-        term.clear_screen().unwrap_or(());
-        println!("{}", console::style("⚙️  Menu Settings").cyan().bold());
-        println!();
-
-        let items = vec![
-            "1. Ubah Kota",
-            "2. Ubah Waktu Peringatan Awal (Menit)",
-            "3. Pilih Suara Adzan",
-            "4. Test Notifikasi & Suara",
-            "5. Setup Daemon Autostart (OS)",
-            "6. Kembali ke Menu Utama",
-        ];
-
-        let selection = Select::with_theme(&theme)
-            .items(&items)
-            .default(0)
-            .interact_on_opt(&term)
-            .unwrap_or(None);
-
-        match selection {
-            Some(0) => set_city_interactive().await,
-            Some(1) => set_notification_time_interactive(),
-            Some(2) => set_sound_interactive(),
-            Some(3) => test_notification_interactive(),
-            Some(4) => {
-                setup_autostart().unwrap_or_else(|e| eprintln!("Error: {}", e));
-                println!("\nTekan Enter untuk melanjutkan...");
-                let _ = term.read_line();
-            }
-            Some(5) | None => break,
-            _ => unreachable!(),
-        }
-    }
-}
-
-fn set_notification_time_interactive() {
-    let mut config = AppConfig::load().unwrap_or_default();
-
-    let input: String = dialoguer::Input::new()
-        .with_prompt("Masukkan menit untuk pengingat sebelum sholat (0 = matikan)")
-        .default(config.notification_time.to_string())
-        .interact_text()
-        .unwrap();
-
-    if let Ok(m) = input.parse::<u32>() {
-        config.notification_time = m;
-        if let Err(e) = config.save() {
-            eprintln!("Gagal menyimpan config: {}", e);
-        } else {
-            println!(
-                "✅ Waktu peringatan berhasil diatur menjadi {} menit sebelum sholat",
-                m
-            );
-        }
+    if status.updated() {
+        println!(
+            "✅ Berhasil update dari {} ke versi {}!",
+            status.version(),
+            status.version()
+        );
+        println!("Silakan jalankan ulang aplikasi.");
     } else {
-        println!("❌ Input tidak valid");
+        println!(
+            "Aplikasi sudah menggunakan versi terbaru ({}).",
+            status.version()
+        );
     }
 
-    let term = Term::stdout();
-    println!("\nTekan Enter untuk melanjutkan...");
-    let _ = term.read_line();
-}
-
-fn set_sound_interactive() {
-    let mut config = AppConfig::load().unwrap_or_default();
-    let theme = ColorfulTheme::default();
-
-    println!("Pilih suara untuk Notifikasi Sholat:");
-    let sounds = vec!["Bedug", "Adzan Mecca", "Adzan Shubuh Abu Hazim", "Mute"];
-
-    // tentukan default
-    let default_idx = match config.sound_choice.as_str() {
-        "bedug" => 0,
-        "adzan_mecca" => 1,
-        "adzan_shubuh" => 2,
-        "mute" => 3,
-        _ => 0,
-    };
-
-    let selection = Select::with_theme(&theme)
-        .items(&sounds)
-        .default(default_idx)
-        .interact()
-        .unwrap();
-
-    let choice = match selection {
-        0 => "bedug",
-        1 => "adzan_mecca",
-        2 => "adzan_shubuh",
-        3 => "mute",
-        _ => "bedug",
-    };
-
-    config.sound_choice = choice.to_string();
-    if let Err(e) = config.save() {
-        eprintln!("Gagal menyimpan config: {}", e);
-    } else {
-        println!("✅ Suara berhasil diubah ke: {}", sounds[selection]);
-    }
-
-    let term = Term::stdout();
-    println!("\nTekan Enter untuk melanjutkan...");
-    let _ = term.read_line();
-}
-
-fn test_notification_interactive() {
-    println!("🔔 Menjalankan Test Notifikasi...");
-
-    let config = AppConfig::load().unwrap_or_default();
-
-    let alert_msg = adzan_lib::helpers::quotes::get_random_message();
-    adzan_lib::helpers::notification::play_adzan(config.sound_choice.clone(), alert_msg);
-
-    println!("✅ Test selesai dikirim. (Tutup dialog putih untuk mematikan suara uji coba)");
-
-    let term = Term::stdout();
-    println!("\nTekan Enter untuk kembali...");
-    let _ = term.read_line();
+    Ok(())
 }
 
 async fn run_daemon() {
@@ -251,7 +109,7 @@ async fn run_daemon() {
     let city_id = match config.selected_city_id.clone() {
         Some(id) => id,
         None => {
-            eprintln!("Belum ada kota dipilih. Jalankan 'adzan set-city' dulu.");
+            eprintln!("Belum ada kota dipilih. Jalankan 'adzan' untuk set kota.");
             return;
         }
     };
@@ -319,211 +177,6 @@ async fn run_daemon() {
     }
 }
 
-async fn show_today_schedule() {
-    let config = AppConfig::load().unwrap_or_default();
-
-    match config.selected_city_id {
-        Some(id) => {
-            let service = PrayerService::new();
-            let city_name = config
-                .selected_city_name
-                .as_deref()
-                .unwrap_or("Kota tidak diketahui");
-
-            let mut sp = spinners::Spinner::new(
-                spinners::Spinners::Dots9,
-                format!("Mengambil jadwal untuk {}...", city_name),
-            );
-            match service.get_today_schedule(id.as_str()).await {
-                Ok(schedule) => {
-                    let lokasi = &schedule.data.kabko;
-                    sp.stop_with_message("✅ Jadwal berhasil dimuat!\n".to_string());
-
-                    println!("Jadwal Sholat Hari Ini - {}", lokasi);
-                    println!("──────────────────────────────");
-
-                    // Ambil jadwal untuk hari ini (ambil yang pertama dari HashMap)
-                    if let Some((_, jadwal_hari)) = schedule.data.jadwal.iter().next() {
-                        println!("Tanggal : {}", jadwal_hari.tanggal);
-                        println!("Imsak   : {}", jadwal_hari.imsak);
-                        println!("Subuh   : {}", jadwal_hari.subuh);
-                        println!("Terbit  : {}", jadwal_hari.terbit);
-                        println!("Dhuha   : {}", jadwal_hari.dhuha);
-                        println!("Dzuhur  : {}", jadwal_hari.dzuhur);
-                        println!("Ashar   : {}", jadwal_hari.ashar);
-                        println!("Maghrib : {}", jadwal_hari.maghrib);
-                        println!("Isya    : {}", jadwal_hari.isya);
-
-                        // --- Tambahkan Countdown ke Sholat Berikutnya ---
-                        println!();
-                        println!("⏰ Countdown ke Sholat Berikutnya:");
-                        println!("──────────────────────────────");
-
-                        let now = Local::now();
-                        let prayer_list: Vec<(&str, &String)> = vec![
-                            ("Subuh", &jadwal_hari.subuh),
-                            ("Dzuhur", &jadwal_hari.dzuhur),
-                            ("Ashar", &jadwal_hari.ashar),
-                            ("Maghrib", &jadwal_hari.maghrib),
-                            ("Isya", &jadwal_hari.isya),
-                        ];
-
-                        let mut found_next = false;
-
-                        for (name, time_str) in &prayer_list {
-                            if let Ok(parsed_time) = NaiveTime::parse_from_str(time_str, "%H:%M") {
-                                let p_datetime = now
-                                    .date_naive()
-                                    .and_time(parsed_time)
-                                    .and_local_timezone(Local)
-                                    .unwrap();
-
-                                if p_datetime > now {
-                                    let duration = p_datetime.signed_duration_since(now);
-                                    let hours = duration.num_hours();
-                                    let minutes = duration.num_minutes() % 60;
-
-                                    println!(
-                                        "{} {} <- ({:02} jam {:02} menit lagi)",
-                                        console::style(name).green().bold(),
-                                        console::style(time_str).cyan(),
-                                        hours,
-                                        minutes
-                                    );
-                                    found_next = true;
-                                } else {
-                                    // Sholat yang sudah lewat
-                                    println!(
-                                        "{} {} ✓",
-                                        console::style(name).dim(),
-                                        console::style(time_str).dim()
-                                    );
-                                }
-                            }
-                        }
-
-                        if !found_next {
-                            println!("🌙 Semua jadwal hari ini sudah terlewati.");
-                        }
-
-                        // Cek reminder aktif
-                        let prayer_times = PrayerTimes::from_schedule(&schedule);
-                        if let Some(message) = prayer_times.check_reminder(config.notification_time)
-                        {
-                            println!();
-                            println!("🔔 Reminder Aktif:");
-                            println!("──────────────────────────────");
-                            if message.contains("sekarang") {
-                                println!(
-                                    "{} {}",
-                                    console::style("🕌 WAKTU SHOLAT TIBA!").red().bold(),
-                                    console::style(&message).yellow()
-                                );
-                            } else if message.contains("menit lagi") {
-                                println!(
-                                    "{} {}",
-                                    console::style(format!(
-                                        "⚠️ {} MENIT LAGI!",
-                                        config.notification_time
-                                    ))
-                                    .yellow()
-                                    .bold(),
-                                    console::style(&message).cyan()
-                                );
-                            }
-                        }
-                    } else {
-                        println!("Tidak ada data jadwal tersedia");
-                    }
-                }
-                Err(e) => {
-                    sp.stop_with_message(format!("❌ Gagal fetch jadwal: {}\n", e));
-                }
-            }
-        }
-        None => {
-            println!("Belum ada kota yang dipilih.");
-            return;
-        }
-    }
-}
-
-async fn show_current_city() {
-    let config = AppConfig::load().unwrap_or_default();
-    match config.selected_city_id {
-        Some(id) => {
-            let name = config
-                .selected_city_name
-                .as_deref()
-                .unwrap_or("Tidak diketahui");
-            println!("Kota terpilih: {} ({})", name, id);
-        }
-        None => println!("Belum ada kota yang dipilih."),
-    }
-}
-
-async fn set_city_interactive() {
-    let mut sp = spinners::Spinner::new(
-        spinners::Spinners::Dots,
-        "Mengambil list kota dari API...".to_string(),
-    );
-
-    let service = PrayerService::new();
-    let cities = match service.get_cities().await {
-        Ok(c) => {
-            sp.stop_with_message("✅ List kota berhasil dimuat!\n".to_string());
-            c
-        }
-        Err(e) => {
-            sp.stop_with_message(format!("❌ Gagal fetch list kota: {}\n", e));
-            return;
-        }
-    };
-
-    // Format items sebagai string sederhana (nama kota)
-    let input_bytes: Vec<u8> = cities
-        .iter()
-        .map(|c| format!("{}\n", c.lokasi))
-        .collect::<String>()
-        .into_bytes();
-
-    let options = SkimOptionsBuilder::default()
-        .height("70%".into())
-        .multi(false)
-        .prompt("Cari kota: ".into())
-        .build()
-        .unwrap();
-
-    let item_reader = SkimItemReader::default();
-    let items = item_reader.of_bufread(Cursor::new(input_bytes));
-
-    let selected = Skim::run_with(&options, Some(items));
-
-    if let Some(output) = selected {
-        if output.is_abort {
-            println!("Pemilihan dibatalkan.");
-            return;
-        }
-
-        if let Some(selected_line) = output.selected_items.first() {
-            let selected_name = selected_line.output().to_string();
-
-            // Cari kota berdasarkan nama (karena output hanya nama)
-            if let Some(chosen) = cities.iter().find(|c| c.lokasi == selected_name) {
-                let mut config = AppConfig::load().unwrap_or_default();
-                config.selected_city_id = Some(chosen.id.clone());
-                config.selected_city_name = Some(chosen.lokasi.clone());
-
-                if let Err(e) = config.save() {
-                    eprintln!("Gagal simpan config: {}", e);
-                } else {
-                    println!("\n✅ Kota berhasil disimpan: {}", chosen.lokasi);
-                }
-            }
-        }
-    }
-}
-
 fn setup_autostart() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(target_os = "linux")]
     {
@@ -535,19 +188,101 @@ fn setup_autostart() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(target_os = "macos")]
     {
         setup_launchd()?;
-        println!("macos (launchd) setup done");
-        println!(
-            "Run this command: \n launchctl load ~/Library/LaunchAgents/com.adzan.reminder.plist"
-        );
+        // Try to load, silently failing if already loaded
+        let plist_path = dirs::home_dir()
+            .unwrap()
+            .join("Library/LaunchAgents/com.adzan.reminder.plist");
+        let _ = std::process::Command::new("launchctl")
+            .arg("load")
+            .arg(&plist_path)
+            .output();
+
+        println!("macos (launchd) setup done & daemon started");
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         println!("Autostart setup not supported on this OS.");
-        println!("Windows: Buat Task Scheduler dengan 'adzan daemon'")
     }
 
-    println!("Setup done! Adzan Reminder akan jalan otomatis setiap boot.");
+    Ok(())
+}
+
+pub fn teardown_autostart() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(target_os = "linux")]
+    {
+        let _ = std::process::Command::new("systemctl")
+            .args(["--user", "stop", "adzan-reminder.service"])
+            .output();
+        let _ = std::process::Command::new("systemctl")
+            .args(["--user", "disable", "adzan-reminder.service"])
+            .output();
+
+        if let Some(config_dir) = dirs::config_dir() {
+            let service_path = config_dir.join("systemd/user/adzan-reminder.service");
+            if service_path.exists() {
+                std::fs::remove_file(service_path)?;
+            }
+        }
+        let _ = std::process::Command::new("systemctl")
+            .args(["--user", "daemon-reload"])
+            .output();
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let plist_path = dirs::home_dir()
+            .unwrap()
+            .join("Library/LaunchAgents/com.adzan.reminder.plist");
+
+        let _ = std::process::Command::new("launchctl")
+            .arg("unload")
+            .arg(&plist_path)
+            .output();
+
+        if plist_path.exists() {
+            std::fs::remove_file(plist_path)?;
+        }
+    }
+
+    Ok(())
+}
+
+pub fn restart_daemon() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(target_os = "linux")]
+    {
+        let status = std::process::Command::new("systemctl")
+            .args(["--user", "restart", "adzan-reminder.service"])
+            .status()?;
+        if !status.success() {
+            return Err("Failed to restart systemd service".into());
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // MacOS launchctl doesn't elegantly "restart" agents without unloading/loading
+        // using the plist path directly, unless using modern bootout/bootstrap or kickstart.
+        // We will safely unload then load.
+        let plist_path = dirs::home_dir()
+            .unwrap()
+            .join("Library/LaunchAgents/com.adzan.reminder.plist");
+
+        let _ = std::process::Command::new("launchctl")
+            .arg("unload")
+            .arg(&plist_path)
+            .output();
+
+        let status = std::process::Command::new("launchctl")
+            .arg("load")
+            .arg(&plist_path)
+            .status()?;
+
+        if !status.success() {
+            return Err("Failed to reload macOS launchd service".into());
+        }
+    }
+
     Ok(())
 }
 
@@ -666,7 +401,7 @@ fn show_about() {
 ║                                          ║
 ║  Dibuat dengan ❤️ oleh:                  ║
 ║  Ismail Nur Alam                         ║
-║  GitHub: github.com/ismailnuralam        ║
+║  GitHub: github.com/itzmail              ║
 ║                                          ║
 ║  "Dan ingatkanlah mereka, karena         ║
 ║   sesungguhnya peringatan itu            ║

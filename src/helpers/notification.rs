@@ -113,5 +113,8 @@ pub fn play_adzan(sound_choice: String, alert_body: String) {
                 eprintln!("Gagal decode MP3 embedded: {}", e);
             }
         }
+
+        // Mencegah rodio mencetak pesan "Dropping OutputStream..." yang merusak TUI
+        std::mem::forget(stream_handle);
     });
 }

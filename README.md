@@ -11,9 +11,26 @@ Fitur:
 
 ## Install
 
+### Quick Install (macOS / Linux)
+Cara paling mudah untuk meng-install Adzan Reminder adalah dengan menjalankan script berikut di terminal:
+```bash
+curl -fsSL https://raw.githubusercontent.com/itzmail/adzan-reminder/main/install.sh | bash
+```
+
+Setelah berhasil terinstall, jalankan:
+```bash
+adzan
+```
+
+### Uninstallation (macOS / Linux)
+Untuk menghapus aplikasi Adzan Reminder (termasuk mematikan daemon berjalan dan menghapus konfigurasi), jalankan:
+```bash
+curl -fsSL https://raw.githubusercontent.com/itzmail/adzan-reminder/main/uninstall.sh | bash
+```
+
 ### macOS (Homebrew)
 ```bash
-brew tap ismailnuralam/adzan
+brew tap itzmail/adzan
 brew install adzan-reminder
 adzan set-city
 adzan setup-autostart
