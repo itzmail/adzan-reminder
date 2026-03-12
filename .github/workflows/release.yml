@@ -35,10 +35,8 @@ jobs:
       - name: Archive binary
         run: |
           cd target/${{ matrix.arch }}-apple-darwin/release
-          mkdir -p package
-          cp adzan package/
-          cp -r ../../../assets package/
-          tar -czf adzan-${{ matrix.arch }}-apple-darwin.tar.gz -C package .
+          cp -r ../../../assets ./
+          tar -czf adzan-${{ matrix.arch }}-apple-darwin.tar.gz adzan assets/
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
