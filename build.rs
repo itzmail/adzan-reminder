@@ -23,7 +23,7 @@ fn main() {
         let _ = fs::remove_dir_all(&target_dir);
 
         // Buat folder baru
-        fs::create_dir_all(&target_dir).unwrap();
+        fs::create_dir_all(&target_dir).expect("Failed to create target assets directory");
 
         // Copy semua file dari assets ke target
         for entry in fs::read_dir(assets_src).unwrap() {
@@ -34,5 +34,6 @@ fn main() {
 
         // Bilang ke Cargo rebuild kalau assets berubah
         println!("cargo:rerun-if-changed=assets/");
+        println!("Copying assets from {:?} to {:?}", assets_src, target_dir);
     }
 }

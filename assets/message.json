@@ -1,41 +1,83 @@
 {
-    "hadist_prioritas": [
-        {
-            "perawi": "HR. Bukhari & Muslim",
-            "teks_indo": "Amalan yang paling dicintai Allah adalah shalat pada waktunya.",
-            "konteks": "Keutamaan waktu"
-        },
-        {
-            "perawi": "HR. Tirmidzi",
-            "teks_indo": "Ridha Allah ada pada awal waktu shalat, sedangkan ampunan-Nya ada di akhir waktu.",
-            "konteks": "Mengejar ridha vs ampunan"
-        },
-        {
-            "perawi": "QS. Al-Ma'un: 4-5",
-            "teks_indo": "Maka celakalah bagi orang-orang yang shalat, (yaitu) orang-orang yang lalai dari shalatnya.",
-            "konteks": "Peringatan menunda shalat"
-        }
-    ],
-    "quotes_sindiran": [
-        {
-            "level": "halus",
-            "content": "Hebat ya, meeting sama klien bisa on-time, meeting sama Yang Punya Rezeki kok ditaruh di sisa waktu?"
-        },
-        {
-            "level": "jenaka",
-            "content": "Laptop lowbat langsung panik cari colokan, giliran iman lowbat denger adzan malah lanjut scrolldown."
-        },
-        {
-            "level": "pedas",
-            "content": "Malaikat maut nggak bakal nunggu kamu selesai kirim email buat narik nyawa. Close tab, buka sajadah."
-        },
-        {
-            "level": "filosofis",
-            "content": "Jadikan kerjaanmu selingan di antara waktu shalat, bukan shalat sebagai selingan di sela kerjaan."
-        },
-        {
-            "level": "satir",
-            "content": "Cari muka di depan bos mati-matian, padahal yang punya jabatan lagi manggil lewat toa masjid."
-        }
-    ]
+  "hadist_prioritas": [
+    {
+      "perawi": "HR. Bukhari & Muslim",
+      "teks_indo": "Amalan yang paling dicintai Allah adalah shalat pada waktunya.",
+      "konteks": "Keutamaan waktu"
+    },
+    {
+      "perawi": "HR. Tirmidzi",
+      "teks_indo": "Ridha Allah ada pada awal waktu shalat, sedangkan ampunan-Nya ada di akhir waktu.",
+      "konteks": "Mengejar ridha vs ampunan"
+    },
+    {
+      "perawi": "QS. Al-Ma'un: 4-5",
+      "teks_indo": "Maka celakalah bagi orang-orang yang shalat, (yaitu) orang-orang yang lalai dari shalatnya.",
+      "konteks": "Peringatan menunda shalat"
+    },
+    {
+      "perawi": "HR. Abu Daud",
+      "teks_indo": "Perjanjian antara kita dengan mereka adalah shalat. Barangsiapa meninggalkannya, maka ia telah kafir.",
+      "konteks": "Pembeda identitas"
+    },
+    {
+      "perawi": "HR. Muslim",
+      "teks_indo": "Shalat lima waktu adalah penggugur dosa di antara waktu-waktu tersebut selama dosa besar dijauhi.",
+      "konteks": "Pembersih jiwa"
+    }
+  ],
+  "quotes_sindiran": [
+    {
+      "level": "halus",
+      "content": "Hebat ya, meeting sama klien bisa on-time, meeting sama Yang Punya Rezeki kok ditaruh di sisa waktu?"
+    },
+    {
+      "level": "jenaka",
+      "content": "Laptop lowbat langsung panik cari colokan, giliran iman lowbat denger adzan malah lanjut scrolldown."
+    },
+    {
+      "level": "pedas",
+      "content": "Malaikat maut nggak bakal nunggu kamu selesai kirim email buat narik nyawa. Close tab, buka sajadah."
+    },
+    {
+      "level": "filosofis",
+      "content": "Jadikan kerjaanmu selingan di antara waktu shalat, bukan shalat sebagai selingan di sela kerjaan."
+    },
+    {
+      "level": "satir",
+      "content": "Cari muka di depan bos mati-matian, padahal yang punya jabatan lagi manggil lewat toa masjid."
+    },
+    {
+      "level": "halus",
+      "content": "Jadwal kerja bisa kamu catat dan patuhi, bagaimana jadwal panggilan-Nya?"
+    },
+    {
+      "level": "jenaka",
+      "content": "Di-tag sama teman langsung respon, diingatkan Allah lewat adzan kok masih mikir dua kali."
+    },
+    {
+      "level": "pedas",
+      "content": "Deadline dunia kamu buru-buru, waktu shalat malah santai kaya di pantai."
+    },
+    {
+      "level": "filosofis",
+      "content": "Ketika nyawamu di ambang ajal, kau akan paham bahwa waktu shalat tak pernah bisa kembali."
+    },
+    {
+      "level": "satir",
+      "content": "Scroll timeline tak kenal waktu, tapi giliran panggilan-Nya ditunda seakan waktu tak berharga."
+    },
+    {
+      "level": "pedas",
+      "content": "Kamu takut kehilangan 'job', tapi nggak takut kehilangan 'Rabb'. Prioritasmu lucu."
+    },
+    {
+      "level": "jenaka",
+      "content": "Nunggu kurir paket aja sanggup berdiri di depan pagar, nunggu panggilan shalat kok rasanya berat bener."
+    },
+    {
+      "level": "halus",
+      "content": "Dunia itu sementara, tapi telat shalatnya kok bisa selamanya jadi kebiasaan?"
+    }
+  ]
 }

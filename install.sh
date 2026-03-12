@@ -89,6 +89,8 @@ DOWNLOAD_URL="https://github.com/$REPO/releases/download/$TAG/$ASSET_NAME"
 
 # 3. Menyiapkan direktori instalasi
 mkdir -p "$INSTALL_DIR"
+ASSETS_DIR="$HOME/.local/share/adzan/assets"
+mkdir -p "$ASSETS_DIR"
 
 # 4. Unduh dan Ekstrak
 TMP_DIR=$(mktemp -d)
@@ -100,6 +102,15 @@ if curl --fail -sL "$DOWNLOAD_URL" -o "$TMP_DIR/$ASSET_NAME"; then
     echo -e "Memasang $BIN_NAME ke $INSTALL_DIR..."
     mv "$TMP_DIR/$BIN_NAME" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/$BIN_NAME"
+    
+    # Copy assets jika ada
+    if [ -d "$TMP_DIR/assets" ]; then
+        echo -e "Memasang assets ke $ASSETS_DIR..."
+        cp -r "$TMP_DIR/assets/"* "$ASSETS_DIR/"
+        echo -e "${GREEN}Assets berhasil dipasang!${NC}"
+    else
+        echo -e "${YELLOW}Assets tidak ditemukan dalam package (menggunakan embedded assets).${NC}"
+    fi
     
     rm -rf "$TMP_DIR"
 else
