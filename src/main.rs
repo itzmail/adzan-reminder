@@ -285,7 +285,13 @@ async fn run_daemon() {
         let r_config = AppConfig::load().unwrap_or_default();
 
         if let Some(message) = prayer_times.check_reminder(r_config.notification_time) {
-            let prayer_name = message.split(' ').next().unwrap_or("Sholat").to_string();
+            // Format tepat waktu : "Waktu {prayer} sekarang! ..."  → ambil kata ke-2
+            // Format 5 menit     : "{prayer} 5 menit lagi! ..."    → ambil kata ke-1
+            let prayer_name = if message.contains("sekarang") {
+                message.split(' ').nth(1).unwrap_or("Sholat").to_string()
+            } else {
+                message.split(' ').next().unwrap_or("Sholat").to_string()
+            };
 
             if message.contains("sekarang") {
                 if !reminded_exact.contains(&prayer_name) {

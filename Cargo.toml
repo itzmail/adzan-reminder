@@ -1,6 +1,6 @@
 [package]
 name = "adzan"
-version = "0.2.5"
+version = "0.2.6"
 description = "Aplikasi reminder jadwal sholat untuk Linux & macOS"
 authors = ["Ismail Nur Alam <ismailnuralam@gmail.com>"]
 edition = "2021"

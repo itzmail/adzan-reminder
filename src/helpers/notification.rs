@@ -7,12 +7,29 @@ const ADZAN_SHUBUH_BYTES: &[u8] = include_bytes!("../../assets/Adzan-Shubuh-Abu-
 const MECCA_BYTES: &[u8] = include_bytes!("../../assets/mecca_56_22.mp3");
 
 #[cfg(target_os = "macos")]
+fn resolve_icon_path() -> String {
+    // Cari assets/mosque.icns relatif terhadap executable
+    if let Ok(exe_path) = std::env::current_exe() {
+        let candidate = exe_path
+            .parent()
+            .unwrap_or(std::path::Path::new("/"))
+            .join("assets/mosque.icns");
+        if candidate.exists() {
+            return candidate.to_string_lossy().to_string();
+        }
+    }
+    // Fallback: assets di samping binary (installed via install.sh)
+    let home_candidate = dirs::home_dir()
+        .unwrap_or_default()
+        .join(".local/share/adzan/assets/mosque.icns");
+    home_candidate.to_string_lossy().to_string()
+}
+
+#[cfg(target_os = "macos")]
 pub fn show_macos_reminder(title: &str, body: &str) {
     let safe_title = title.replace("\"", "\\\"");
     let safe_body = body.replace("\"", "\\\"");
-
-    // Gunakan static path sementara, ideally this configures a root dir if the app is packaged
-    let icon_path = "/Users/ismailalam/Development/my/adzan_reminder_cli/assets/mosque.icns";
+    let icon_path = resolve_icon_path();
 
     let script = format!(
         r#"
@@ -33,7 +50,7 @@ fn show_macos_alert(title: &str, body: &str) -> bool {
     let safe_title = title.replace("\"", "\\\"");
     let safe_body = body.replace("\"", "\\\"");
 
-    let icon_path = "/Users/ismailalam/Development/my/adzan_reminder_cli/assets/mosque.icns";
+    let icon_path = resolve_icon_path();
 
     let script = format!(
         r#"
