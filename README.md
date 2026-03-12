@@ -1,35 +1,36 @@
 # Adzan Reminder CLI 🕌
 
-Reminder sholat otomatis untuk desktop (macOS, Linux, Windows).
+Automatic prayer time reminder for desktop (macOS, Linux, Windows).
 
-Fitur:
-- Jadwal akurat dari API MyQuran
-- Notification desktop 5 menit sebelum & tepat waktu
-- Suara adzan/bedug
-- Daemon background
-- Auto-start saat boot
+Features:
+- Accurate schedule from the MyQuran API
+- Desktop notification 5 minutes before & at prayer time
+- Adzan / bedug sound
+- Background daemon
+- Auto-start at boot
+- Bilingual UI (English & Bahasa Indonesia)
 
 ## Install
 
 ### Quick Install (macOS / Linux)
-Cara paling mudah untuk meng-install Adzan Reminder adalah dengan menjalankan script berikut di terminal:
+The easiest way to install Adzan Reminder is by running the following script in your terminal:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/itzmail/adzan-reminder/main/install.sh | bash
 ```
 
-Setelah berhasil terinstall, jalankan:
+After installation, simply run:
 ```bash
 adzan
 ```
 
 ### Uninstallation (macOS / Linux)
-Untuk menghapus aplikasi Adzan Reminder (termasuk mematikan daemon berjalan dan menghapus konfigurasi), jalankan:
+To remove Adzan Reminder (including stopping the running daemon and deleting configuration), run:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/itzmail/adzan-reminder/main/uninstall.sh | bash
 ```
 
 ### Running on Local Machine
-1. Clone repository
+1. Clone the repository
     ```bash
     git clone https://github.com/itzmail/adzan-reminder
     cd adzan-reminder
@@ -38,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/itzmail/adzan-reminder/main/uninsta
     ```bash
     cargo install --path .
     ```
-3. Running from terminal
+3. Run from terminal
     ```bash
     cargo run
     ```
