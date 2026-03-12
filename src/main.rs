@@ -101,7 +101,7 @@ fn run_update() -> Result<(), Box<dyn std::error::Error>> {
         .repo_owner("itzmail")
         .repo_name("adzan-reminder")
         .bin_name(&bin_name)
-        .bin_path_in_archive("adzan")
+        .bin_path_in_archive("./adzan")
         .no_confirm(true)
         .show_download_progress(true)
         .current_version(env!("CARGO_PKG_VERSION"))
