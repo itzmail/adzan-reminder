@@ -61,13 +61,25 @@ echo -e "Platform terdeteksi: ${YELLOW}${OS} ${ARCH}${NC} (Target: ${TARGET})"
 
 # 2. Mendapatkan versi terbaru (Latest Tag)
 echo -e "Mencari versi terbaru di GitHub..."
-LATEST_RELEASE=$(curl -sL "https://api.github.com/repos/$REPO/releases/latest")
+LATEST_RELEASE=$(curl -sfL "https://api.github.com/repos/$REPO/releases/latest")
 
-TAG=$(echo "$LATEST_RELEASE" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+if [ -z "$LATEST_RELEASE" ]; then
+    echo -e "${RED}Gagal menghubungi GitHub API. Pastikan Anda terhubung ke internet.${NC}"
+    exit 1
+fi
 
-if [ -z "$TAG" ]; then
-    echo -e "${RED}Gagal mendapatkan data rilis terbaru. Pastikan Anda terhubung ke internet.${NC}"
-    echo -e "${YELLOW}Catatan: Jika repository ini baru, Anda mungkin belum menerbitkan (publish) Release pertama Anda di GitHub.${NC}"
+# Ekstrak tag_name — pastikan hasilnya dimulai dengan 'v' agar tidak salah tangkap
+TAG=$(echo "$LATEST_RELEASE" | grep '"tag_name"' | head -1 | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+
+if [ -z "$TAG" ] || [[ "$TAG" != v* ]]; then
+    echo -e "${RED}Gagal mendapatkan data rilis terbaru.${NC}"
+    echo -e "${YELLOW}Kemungkinan penyebab:${NC}"
+    echo -e "  - Belum ada rilis yang dipublikasikan di repositori ini"
+    echo -e "  - GitHub API rate limit tercapai (coba beberapa menit lagi)"
+    echo -e "  - Tidak ada koneksi internet"
+    if [ -n "$LATEST_RELEASE" ]; then
+        echo -e "${YELLOW}Response dari GitHub:${NC} $(echo "$LATEST_RELEASE" | head -3)"
+    fi
     exit 1
 fi
 
