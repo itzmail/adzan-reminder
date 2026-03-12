@@ -34,6 +34,28 @@ impl PrayerTimes {
         }
     }
 
+    /// Returns the name and time of the next upcoming prayer, or None if all have passed today.
+    pub fn next_prayer(&self) -> Option<(&'static str, NaiveTime)> {
+        let now = Local::now().time();
+        let now_minutes = now.hour() as i32 * 60 + now.minute() as i32;
+
+        for &prayer in &PRAYER_TIMES {
+            let prayer_time = match prayer {
+                "Subuh" => self.subuh,
+                "Dzuhur" => self.dzuhur,
+                "Ashar" => self.ashar,
+                "Maghrib" => self.maghrib,
+                "Isya" => self.isya,
+                _ => continue,
+            };
+            let prayer_minutes = prayer_time.hour() as i32 * 60 + prayer_time.minute() as i32;
+            if prayer_minutes > now_minutes {
+                return Some((prayer, prayer_time));
+            }
+        }
+        None
+    }
+
     pub fn check_reminder(&self, notification_time: u32) -> Option<String> {
         let now = Local::now().time();
 

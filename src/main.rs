@@ -36,7 +36,7 @@ async fn main() {
 }
 
 fn print_help() {
-    println!("Adzan Reminder CLI (TUI Mode Recommended)");
+    println!("Adzan Reminder CLI v{}", env!("CARGO_PKG_VERSION"));
     println!("Perintah:");
     println!("  today         - Tampilkan jadwal hari ini");
     println!("  set-city      - (Pakai TUI via 'adzan' tanpa argumen untuk UI)");
@@ -45,6 +45,9 @@ fn print_help() {
     println!("  setup-autostart - Setup auto-start saat boot");
     println!("  update        - Update aplikasi ke versi terbaru");
     println!("  about         - Tentang app");
+    println!("Flag:");
+    println!("  --version, -V - Tampilkan versi aplikasi");
+    println!("  --help,    -h - Tampilkan bantuan ini");
     println!("Tanpa argumen → Buka GUI/TUI Interaktif (Direkomendasikan)");
 }
 
@@ -67,10 +70,21 @@ async fn handle_command(args: &[String]) {
         }
         "about" => show_about(),
         "--help" | "-h" => print_help(),
-        _ => {
-            eprintln!("Perintah '{}' tidak dikenal.", args[0]);
-            println!();
-            print_help();
+        "--version" | "-V" => {
+            println!("adzan v{}", env!("CARGO_PKG_VERSION"));
+        }
+        unknown => {
+            if unknown.starts_with('-') {
+                // Flag yang tidak dikenal — pesan singkat, tanpa full help
+                eprintln!(
+                    "Flag '{}' tidak dikenal. Gunakan --help untuk bantuan.",
+                    unknown
+                );
+            } else {
+                eprintln!("Perintah '{}' tidak dikenal.", unknown);
+                println!();
+                print_help();
+            }
         }
     }
 }
@@ -113,25 +127,42 @@ fn run_update() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn show_today() {
     let config = AppConfig::load().unwrap_or_default();
+    let is_en = config.language == "en";
 
     let city_id = match config.selected_city_id.clone() {
         Some(id) => id,
         None => {
-            eprintln!("❌ Belum ada kota dipilih. Jalankan 'adzan' untuk set kota di TUI.");
+            if is_en {
+                eprintln!("❌ No city selected. Run 'adzan' to set a city in the TUI.");
+            } else {
+                eprintln!("❌ Belum ada kota dipilih. Jalankan 'adzan' untuk set kota di TUI.");
+            }
             return;
         }
     };
 
-    let city_name = config.selected_city_name.as_deref().unwrap_or("Kota");
+    let city_name =
+        config
+            .selected_city_name
+            .as_deref()
+            .unwrap_or(if is_en { "City" } else { "Kota" });
 
-    print!("Mengambil jadwal sholat untuk {}...", city_name);
+    if is_en {
+        print!("Fetching prayer schedule for {}...", city_name);
+    } else {
+        print!("Mengambil jadwal sholat untuk {}...", city_name);
+    }
     std::io::Write::flush(&mut std::io::stdout()).unwrap();
 
     let service = PrayerService::new();
     let schedule = match service.get_today_schedule(&city_id).await {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("\n❌ Gagal mengambil jadwal: {}", e);
+            if is_en {
+                eprintln!("\n❌ Failed to fetch schedule: {}", e);
+            } else {
+                eprintln!("\n❌ Gagal mengambil jadwal: {}", e);
+            }
             return;
         }
     };
@@ -140,12 +171,17 @@ async fn show_today() {
     println!();
 
     if let Some((_, jadwal)) = schedule.data.jadwal.iter().next() {
-        println!("\n📅 JADWAL SHOLAT — {}", jadwal.tanggal);
+        let title_label = if is_en {
+            "PRAYER SCHEDULE"
+        } else {
+            "JADWAL SHOLAT"
+        };
+        println!("\n📅 {} — {}", title_label, jadwal.tanggal);
         println!("📍 {}", schedule.data.kabko);
-        println!("{}", "─".repeat(30)); // Garis pemisah tipis
+        println!("{}", "─".repeat(38));
 
-        // Menggunakan padding sederhana agar waktu tetap sejajar di kanan
-        let list_jadwal = [
+        // Nama sholat (dari API) — tetap bahasa Arab/Indonesia
+        let list_jadwal: [(&str, &str); 5] = [
             ("Subuh", &jadwal.subuh),
             ("Dzuhur", &jadwal.dzuhur),
             ("Ashar", &jadwal.ashar),
@@ -153,13 +189,51 @@ async fn show_today() {
             ("Isya", &jadwal.isya),
         ];
 
-        for (nama, waktu) in list_jadwal {
-            // {:<10} membuat nama sholat punya lebar 10 karakter rata kiri
-            // {:>10} membuat waktu punya lebar 10 karakter rata kanan
-            println!("  {:<10} │ {:>10}", nama, waktu);
+        // Hitung next prayer untuk di-highlight
+        let prayer_times = PrayerTimes::from_schedule(&schedule);
+        let next_name = prayer_times.next_prayer().map(|(n, _)| n);
+
+        for (nama, waktu) in &list_jadwal {
+            let marker = if next_name == Some(nama) { "▶" } else { " " };
+            println!(" {} {:<10} │ {:>8}", marker, nama, waktu);
         }
 
-        println!("{}", "─".repeat(30));
+        println!("{}", "─".repeat(38));
+
+        // Tampilkan waktu tersisa ke sholat berikutnya
+        match prayer_times.next_prayer() {
+            Some((next, next_time)) => {
+                let now = Local::now();
+                let now_min = now.hour() as i32 * 60 + now.minute() as i32;
+                let next_min = next_time.hour() as i32 * 60 + next_time.minute() as i32;
+                let diff = next_min - now_min;
+                let hours = diff / 60;
+                let minutes = diff % 60;
+
+                if is_en {
+                    let time_str = if hours > 0 {
+                        format!("{}h {}m", hours, minutes)
+                    } else {
+                        format!("{}m", minutes)
+                    };
+                    println!("\n⏳ {} prayer in {}", next, time_str);
+                } else {
+                    let time_str = if hours > 0 {
+                        format!("{}j {}m", hours, minutes)
+                    } else {
+                        format!("{}m", minutes)
+                    };
+                    println!("\n⏳ {} lagi {}", time_str, next);
+                }
+            }
+            None => {
+                if is_en {
+                    println!("\n✅ All prayers for today have passed.");
+                } else {
+                    println!("\n✅ Semua sholat hari ini sudah lewat.");
+                }
+            }
+        }
     }
 }
 
