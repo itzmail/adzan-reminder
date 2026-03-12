@@ -22,6 +22,9 @@ pub enum SettingState {
     EditingSound {
         selected_index: usize,
     },
+    EditingLanguage {
+        selected_index: usize,
+    },
     ManagingDaemon {
         selected_index: usize,
     },
@@ -162,6 +165,31 @@ impl App {
                 }
                 return false;
             }
+            SettingState::EditingLanguage { selected_index } => {
+                let langs = ["id", "en"];
+                match key {
+                    KeyCode::Esc => {
+                        self.setting_state = SettingState::Normal;
+                    }
+                    KeyCode::Enter => {
+                        self.config.language = langs[*selected_index].to_string();
+                        let _ = self.config.save();
+                        self.setting_state = SettingState::Normal;
+                    }
+                    KeyCode::Up => {
+                        if *selected_index > 0 {
+                            *selected_index -= 1;
+                        } else {
+                            *selected_index = langs.len() - 1;
+                        }
+                    }
+                    KeyCode::Down => {
+                        *selected_index = (*selected_index + 1) % langs.len();
+                    }
+                    _ => {}
+                }
+                return false;
+            }
             SettingState::ShowingMessage(_) => {
                 match key {
                     KeyCode::Esc | KeyCode::Enter | KeyCode::Char('b') => {
@@ -261,7 +289,7 @@ impl App {
                 self.selected_menu_index = (self.selected_menu_index + 1) % 4;
             }
             Tab::Settings => {
-                self.selected_settings_index = (self.selected_settings_index + 1) % 6;
+                self.selected_settings_index = (self.selected_settings_index + 1) % 7;
             }
             _ => {}
         }
@@ -280,7 +308,7 @@ impl App {
                 if self.selected_settings_index > 0 {
                     self.selected_settings_index -= 1;
                 } else {
-                    self.selected_settings_index = 5;
+                    self.selected_settings_index = 6;
                 }
             }
             _ => {}
@@ -335,6 +363,7 @@ impl App {
                         self.setting_state = SettingState::ManagingDaemon { selected_index: 0 };
                     }
                     5 => {
+                        let t = crate::i18n::get(&self.config.language);
                         let msg = match std::thread::spawn(|| {
                             let target = self_update::get_target();
                             let bin_name = format!("adzan-{}", target);
@@ -361,9 +390,26 @@ impl App {
                                     )
                                 }
                             }
-                            Err(e) => format!("❌ Gagal update: {}", e),
+                            Err(e) => format!(
+                                "❌ {}: {}",
+                                if t.lang_en == "English" {
+                                    "Update failed"
+                                } else {
+                                    "Gagal update"
+                                },
+                                e
+                            ),
                         };
                         self.setting_state = SettingState::ShowingMessage(msg);
+                    }
+                    6 => {
+                        let current_pos = ["id", "en"]
+                            .iter()
+                            .position(|&l| l == self.config.language)
+                            .unwrap_or(0);
+                        self.setting_state = SettingState::EditingLanguage {
+                            selected_index: current_pos,
+                        };
                     }
                     _ => {}
                 }

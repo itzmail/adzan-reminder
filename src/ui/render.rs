@@ -20,6 +20,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
 }
 
 fn render_dashboard(f: &mut Frame, app: &mut App) {
+    let t = crate::i18n::get(&app.config.language);
     let current_ver = env!("CARGO_PKG_VERSION");
 
     // Cek apakah ada update yang tersedia
@@ -79,14 +80,14 @@ fn render_dashboard(f: &mut Frame, app: &mut App) {
         if let Some((_, jadwal_hari)) = schedule.data.jadwal.iter().next() {
             schedule_lines.push(Line::from(vec![
                 Span::styled(
-                    format!("Lokasi: {}", kabko),
+                    format!("{}: {}", t.label_location, kabko),
                     Style::default()
                         .fg(Color::Green)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" | "),
                 Span::styled(
-                    format!("Tanggal: {}", jadwal_hari.tanggal),
+                    format!("{}: {}", t.label_date, jadwal_hari.tanggal),
                     Style::default().fg(Color::Yellow),
                 ),
             ]));
@@ -108,27 +109,25 @@ fn render_dashboard(f: &mut Frame, app: &mut App) {
             ]));
         }
     } else {
-        schedule_lines.push(Line::from(
-            "Jadwal belum tersedia. Buka tab Settings untuk set kota.",
-        ));
+        schedule_lines.push(Line::from(t.schedule_empty));
     }
 
     let summary = Paragraph::new(schedule_lines).block(
         Block::default()
-            .title(" Jadwal Hari Ini ")
+            .title(t.schedule_title)
             .borders(Borders::ALL),
     );
     f.render_widget(summary, chunks[1]);
 
     // Menu
     let items = vec![
-        ListItem::new("1. Countdown Adzan"),
-        ListItem::new("2. Settings"),
-        ListItem::new("3. About"),
-        ListItem::new("4. Quit"),
+        ListItem::new(t.menu_countdown),
+        ListItem::new(t.menu_settings),
+        ListItem::new(t.menu_about),
+        ListItem::new(t.menu_quit),
     ];
     let menu_list = List::new(items)
-        .block(Block::default().title(" Menu Utama ").borders(Borders::ALL))
+        .block(Block::default().title(t.menu_title).borders(Borders::ALL))
         .highlight_style(
             Style::default()
                 .fg(Color::Yellow)
@@ -145,13 +144,15 @@ fn render_dashboard(f: &mut Frame, app: &mut App) {
     state.select(Some(app.selected_menu_index));
     f.render_stateful_widget(menu_list, menu_chunk[0], &mut state);
 
-    let footer = Paragraph::new("q: Quit | Enter: Select | b/Esc: Back")
+    let footer = Paragraph::new(t.footer_general)
         .alignment(Alignment::Center)
         .style(Style::default().fg(Color::DarkGray));
     f.render_widget(footer, menu_chunk[1]);
 }
 
 fn render_countdown(f: &mut Frame, app: &mut App) {
+    let t = crate::i18n::get(&app.config.language);
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
@@ -164,7 +165,7 @@ fn render_countdown(f: &mut Frame, app: &mut App) {
         )
         .split(f.area());
 
-    let mut next_prayer_name = "Belum Diketahui".to_string();
+    let mut next_prayer_name = t.countdown_unknown.to_string();
     let mut countdown_text = "00:00:00".to_string();
 
     if let Some(ref schedule) = app.schedule {
@@ -202,14 +203,15 @@ fn render_countdown(f: &mut Frame, app: &mut App) {
             }
 
             if !found {
-                next_prayer_name = "Semua Sudah Lewat".to_string();
+                next_prayer_name = t.countdown_all_passed.to_string();
                 countdown_text = "--:--:--".to_string();
             }
         }
     }
 
     let header_text = format!(
-        "\n  T H E   N E X T   A D Z A N :   {}  \n",
+        "\n {} {}  \n",
+        t.countdown_next,
         next_prayer_name.to_uppercase()
     );
     let highlight = Paragraph::new(header_text)
@@ -233,16 +235,17 @@ fn render_countdown(f: &mut Frame, app: &mut App) {
     let inner_area = clock_block.inner(chunks[1]);
     f.render_widget(clock_block, chunks[1]);
 
-    // Tui-big-text natively aligns to the center of inner_area because of .alignment(Center)
     f.render_widget(big_text, inner_area);
 
-    let footer = Paragraph::new("q: Quit | Enter: Select | b/Esc: Back")
+    let footer = Paragraph::new(t.footer_general)
         .alignment(Alignment::Center)
         .style(Style::default().fg(Color::DarkGray));
     f.render_widget(footer, chunks[2]);
 }
 
 fn render_settings(f: &mut Frame, app: &mut App) {
+    let t = crate::i18n::get(&app.config.language);
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
@@ -254,7 +257,7 @@ fn render_settings(f: &mut Frame, app: &mut App) {
         )
         .split(f.area());
 
-    let header = Paragraph::new("\n S E T T I N G S \n")
+    let header = Paragraph::new(t.settings_title)
         .style(
             Style::default()
                 .fg(Color::Cyan)
@@ -276,24 +279,46 @@ fn render_settings(f: &mut Frame, app: &mut App) {
         .split(chunks[1]);
 
     let items = vec![
-        ListItem::new("1. Set Kota Lokasi (Gunakan 'adzan set-city' di CLI)"),
+        ListItem::new(t.setting_city),
         ListItem::new(format!(
-            "2. Waktu Peringatan Awal: < {} Menit > (Tekan Enter)",
-            app.config.notification_time
+            "{}: < {} {} > ({})",
+            t.setting_notif_time,
+            app.config.notification_time,
+            t.setting_notif_time_unit,
+            if app.config.language == "en" {
+                "Press Enter"
+            } else {
+                "Tekan Enter"
+            }
         )),
         ListItem::new(format!(
-            "3. Suara Adzan: {} (Tekan Enter)",
-            app.config.sound_choice
+            "{}: {} ({})",
+            t.setting_sound,
+            app.config.sound_choice,
+            if app.config.language == "en" {
+                "Press Enter"
+            } else {
+                "Tekan Enter"
+            }
         )),
-        ListItem::new("4. Test Notifikasi (Tekan Enter)"),
-        ListItem::new("5. Setup Daemon Autostart (Gunakan 'adzan setup-autostart' di CLI)"),
-        ListItem::new("6. Cek Update Aplikasi (Tekan Enter)"),
+        ListItem::new(t.setting_test),
+        ListItem::new(t.setting_daemon),
+        ListItem::new(t.setting_update),
+        ListItem::new(format!(
+            "{}: [{}]",
+            t.setting_language,
+            if app.config.language == "en" {
+                "English"
+            } else {
+                "Indonesia"
+            }
+        )),
     ];
 
     let menu_list = List::new(items)
         .block(
             Block::default()
-                .title(" Daftar Pengaturan ")
+                .title(t.settings_list_title)
                 .borders(Borders::ALL),
         )
         .highlight_style(
@@ -308,12 +333,13 @@ fn render_settings(f: &mut Frame, app: &mut App) {
     f.render_stateful_widget(menu_list, body_chunks[0], &mut state);
 
     let tooltip_text = match app.selected_settings_index {
-        0 => "Mengubah kota tempat kamu berada.\nAPI akan mencarikan jadwal sholat akurat berasarkan ID kota tersebut.",
-        1 => "Fitur pre-reminder.\nMengatur berapa menit aplikasi akan bunyi / memberi notifikasi SEBELUM waktu azan masuk.",
-        2 => "Pilih suara alarm yang kamu suka (Bedug / Adzan / Mute).",
-        3 => "Mensimulasikan seolah-olah waktu Adzan sudah tiba (memutar audio test).",
-        4 => "Mengonfigurasi service OS (Launchd/SystemD) agar reminder jalan sendiri setiap komputer nyala tanpa perlu buka terminal.",
-        5 => "Mengecek pembaruan aplikasi dari GitHub dan langsung mendownload versi terbaru jika tersedia.",
+        0 => t.tooltip_city,
+        1 => t.tooltip_notif,
+        2 => t.tooltip_sound,
+        3 => t.tooltip_test,
+        4 => t.tooltip_daemon,
+        5 => t.tooltip_update,
+        6 => t.tooltip_language,
         _ => "",
     };
 
@@ -321,7 +347,7 @@ fn render_settings(f: &mut Frame, app: &mut App) {
         .style(Style::default().fg(Color::LightBlue))
         .block(
             Block::default()
-                .title(" Keterangan ")
+                .title(t.settings_tooltip_title)
                 .borders(Borders::ALL)
                 .padding(ratatui::widgets::Padding::new(2, 2, 1, 1)),
         );
@@ -333,7 +359,7 @@ fn render_settings(f: &mut Frame, app: &mut App) {
 
     f.render_widget(tooltip, right_chunk[0]);
 
-    let footer = Paragraph::new("q: Quit | Enter: Select | b/Esc: Back")
+    let footer = Paragraph::new(t.footer_general)
         .alignment(Alignment::Center)
         .style(Style::default().fg(Color::DarkGray));
     f.render_widget(footer, right_chunk[1]);
@@ -356,7 +382,7 @@ fn render_settings(f: &mut Frame, app: &mut App) {
             let search_bar = Paragraph::new(format!("> {}_", query)).block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(" Cari Kota (Ketik & Enter) "),
+                    .title(t.modal_city_title),
             );
             f.render_widget(search_bar, chunks[0]);
 
@@ -365,7 +391,11 @@ fn render_settings(f: &mut Frame, app: &mut App) {
                 .map(|c| ListItem::new(c.lokasi.clone()))
                 .collect();
             let result_list = List::new(list_items)
-                .block(Block::default().borders(Borders::ALL).title(" Hasil "))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(t.modal_city_results),
+                )
                 .highlight_style(
                     Style::default()
                         .fg(Color::Yellow)
@@ -387,7 +417,30 @@ fn render_settings(f: &mut Frame, app: &mut App) {
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .title(" Pilih Suara (Up/Down + Enter) "),
+                        .title(t.modal_sound_title),
+                )
+                .highlight_style(
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                )
+                .highlight_symbol(">> ");
+
+            let mut state = ListState::default();
+            state.select(Some(*selected_index));
+            f.render_stateful_widget(result_list, area, &mut state);
+        }
+        crate::ui::app::SettingState::EditingLanguage { selected_index } => {
+            let area = centered_rect(40, 30, f.area());
+            f.render_widget(Clear, area);
+
+            let lang_names = [t.lang_id, t.lang_en];
+            let list_items: Vec<ListItem> = lang_names.iter().map(|s| ListItem::new(*s)).collect();
+            let result_list = List::new(list_items)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(t.modal_language_title),
                 )
                 .highlight_style(
                     Style::default()
@@ -407,7 +460,7 @@ fn render_settings(f: &mut Frame, app: &mut App) {
                 .style(Style::default().fg(Color::White))
                 .block(
                     Block::default()
-                        .title(" Peringatan / Informasi ")
+                        .title(t.modal_info_title)
                         .borders(Borders::ALL)
                         .padding(ratatui::widgets::Padding::new(2, 2, 2, 2)),
                 )
@@ -419,13 +472,17 @@ fn render_settings(f: &mut Frame, app: &mut App) {
             let area = centered_rect(40, 40, f.area());
             f.render_widget(Clear, area);
 
-            let options = ["Instal & Start Daemon", "Uninstall & Stop Daemon", "Batal"];
+            let options = [
+                t.modal_daemon_install,
+                t.modal_daemon_uninstall,
+                t.modal_daemon_cancel,
+            ];
             let list_items: Vec<ListItem> = options.iter().map(|s| ListItem::new(*s)).collect();
             let result_list = List::new(list_items)
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .title(" Setup Background Daemon "),
+                        .title(t.modal_daemon_title),
                 )
                 .highlight_style(
                     Style::default()
@@ -463,7 +520,9 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         .split(popup_layout[1])[1]
 }
 
-fn render_about(f: &mut Frame, _app: &mut App) {
+fn render_about(f: &mut Frame, app: &mut App) {
+    let t = crate::i18n::get(&app.config.language);
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
@@ -476,7 +535,7 @@ fn render_about(f: &mut Frame, _app: &mut App) {
         )
         .split(f.area());
 
-    let header = Paragraph::new("\n A B O U T \n")
+    let header = Paragraph::new(t.about_title)
         .style(
             Style::default()
                 .fg(Color::Cyan)
@@ -495,7 +554,7 @@ fn render_about(f: &mut Frame, _app: &mut App) {
                 .fg(Color::Yellow),
         )),
         Line::from(""),
-        Line::from("Dibuat dengan ❤️ oleh:"),
+        Line::from(t.about_made_by),
         Line::from("Ismail Nur Alam"),
         Line::from("GitHub: github.com/itzmail"),
         Line::from(""),
@@ -504,8 +563,8 @@ fn render_about(f: &mut Frame, _app: &mut App) {
         Line::from(" bermanfaat bagi orang-orang mukmin.\""),
         Line::from("(QS. Adz-Dzariyat: 55)"),
         Line::from(""),
-        Line::from("Terima kasih telah menggunakan app ini!"),
-        Line::from("Semoga menjadi amal jariyah 🤲"),
+        Line::from(t.about_thanks),
+        Line::from(t.about_prayer),
     ];
 
     let body = Paragraph::new(about_text)
@@ -514,7 +573,7 @@ fn render_about(f: &mut Frame, _app: &mut App) {
 
     f.render_widget(body, chunks[1]);
 
-    let footer = Paragraph::new("q: Quit | b/Esc: Back")
+    let footer = Paragraph::new(t.footer_about)
         .alignment(Alignment::Center)
         .style(Style::default().fg(Color::DarkGray));
     f.render_widget(footer, chunks[2]);

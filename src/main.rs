@@ -10,6 +10,7 @@ use std::io::Write;
 use std::time::Duration;
 use std::{fs, thread};
 
+pub mod i18n;
 pub mod ui;
 
 #[tokio::main(flavor = "current_thread")]

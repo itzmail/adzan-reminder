@@ -6,6 +6,7 @@ pub struct AppConfig {
     pub selected_city_name: Option<String>,
     pub notification_time: u32,
     pub sound_choice: String,
+    pub language: String,
 }
 
 impl Default for AppConfig {
@@ -15,6 +16,7 @@ impl Default for AppConfig {
             selected_city_name: None,
             notification_time: 5,
             sound_choice: "bedug".to_string(),
+            language: "en".to_string(),
         }
     }
 }
