@@ -64,6 +64,14 @@ if [ -d "$CONFIG_DIR" ]; then
     echo -e "${GREEN}Konfigurasi berhasil dihapus.${NC}"
 fi
 
+# 4. Hapus Database dan Assets
+DATA_DIR="$HOME/.local/share/adzan"
+if [ -d "$DATA_DIR" ]; then
+    echo -e "Menghapus direktori data & assets (~/.local/share/adzan)..."
+    rm -rf "$DATA_DIR"
+    echo -e "${GREEN}Data & assets berhasil dihapus.${NC}"
+fi
+
 # Pastikan versi fallback linux hapus juga jika macOS ada config di ~/.config
 if [ -d "$HOME/.config/adzan" ]; then
     rm -rf "$HOME/.config/adzan"
