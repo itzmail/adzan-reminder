@@ -1,6 +1,6 @@
 [package]
 name = "adzan"
-version = "0.2.9"
+version = "0.2.13"
 description = "Aplikasi reminder jadwal sholat untuk Linux & macOS"
 authors = ["Ismail Nur Alam <ismailnuralam@gmail.com>"]
 edition = "2021"
@@ -41,7 +41,7 @@ rand = "0.8.5"
 ratatui = "0.29.0"
 crossterm = { version = "0.28.1", features = ["event-stream"] }
 tui-big-text = "0.7.1"
-self_update = { version = "0.43.1", features = [
+self_update = { version = "0.43.1", default-features = false, features = [
     "archive-tar",
     "archive-zip",
     "compression-flate2",
