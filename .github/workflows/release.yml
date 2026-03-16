@@ -1,4 +1,4 @@
-name: Release macOS Binary
+name: Release Multi-Platform Binaries
 
 permissions:
   contents: write
@@ -9,16 +9,25 @@ on:
       - 'v*.*.*'
 
 jobs:
-  build-macos:
-    name: Build macOS ${{ matrix.arch }}
-    runs-on: macos-latest
+  release:
+    name: Build and Release
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - arch: x86_64
-            name: adzan-macos-x86_64
-          - arch: aarch64
-            name: adzan-macos-arm64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            bin_name: adzan
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            bin_name: adzan
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            bin_name: adzan
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            bin_name: adzan
 
     steps:
       - name: Checkout repository
@@ -27,18 +36,27 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.arch }}-apple-darwin
+          targets: ${{ matrix.target }}
+
+      - name: Install cross (for Linux arm64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cargo install cross
 
       - name: Build binary
-        run: cargo build --release --target ${{ matrix.arch }}-apple-darwin
+        run: |
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
 
       - name: Archive binary
         run: |
-          cd target/${{ matrix.arch }}-apple-darwin/release
+          cd target/${{ matrix.target }}/release
           cp -r ../../../assets ./
-          tar -czf adzan-${{ matrix.arch }}-apple-darwin.tar.gz adzan assets/
+          tar -czf adzan-${{ matrix.target }}.tar.gz adzan assets/
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: target/${{ matrix.arch }}-apple-darwin/release/adzan-${{ matrix.arch }}-apple-darwin.tar.gz
+          files: target/${{ matrix.target }}/release/adzan-${{ matrix.target }}.tar.gz

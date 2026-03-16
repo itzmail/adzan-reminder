@@ -132,6 +132,41 @@ fn show_macos_alert(title: &str, body: &str) -> bool {
     false
 }
 
+#[cfg(target_os = "linux")]
+pub fn show_linux_reminder(title: &str, body: &str) {
+    let _ = std::process::Command::new("notify-send")
+        .arg("-t")
+        .arg("10000") // 10 detik
+        .arg(title)
+        .arg(body)
+        .output();
+}
+
+#[cfg(target_os = "linux")]
+fn show_linux_alert(title: &str, body: &str) -> bool {
+    // Menggunakan zenity untuk dialog interaktif
+    let output = std::process::Command::new("zenity")
+        .arg("--question")
+        .arg("--title")
+        .arg(title)
+        .arg("--text")
+        .arg(body)
+        .arg("--ok-label")
+        .arg("Tutup & Matikan Audio")
+        .arg("--cancel-label")
+        .arg("Biarkan")
+        .arg("--timeout")
+        .arg("120")
+        .output();
+
+    if let Ok(out) = output {
+        // Zenity return code 0 untuk OK, 1 untuk Cancel/Close
+        return out.status.success();
+    }
+
+    false
+}
+
 pub fn play_adzan(sound_choice: String, alert_body: String) {
     if sound_choice == "mute" {
         return;
@@ -170,7 +205,16 @@ pub fn play_adzan(sound_choice: String, alert_body: String) {
                     }
                 }
 
-                #[cfg(not(target_os = "macos"))]
+                #[cfg(target_os = "linux")]
+                {
+                    if show_linux_alert("Waktu Sholat Telah Tiba!", &alert_body) {
+                        sink.stop();
+                    } else {
+                        sink.sleep_until_end();
+                    }
+                }
+
+                #[cfg(not(any(target_os = "macos", target_os = "linux")))]
                 {
                     sink.sleep_until_end();
                 }

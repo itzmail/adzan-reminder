@@ -310,6 +310,12 @@ async fn run_daemon() {
                         &message,
                     );
 
+                    #[cfg(target_os = "linux")]
+                    adzan_lib::helpers::notification::show_linux_reminder(
+                        "Sebentar Lagi Sholat",
+                        &message,
+                    );
+
                     reminded_five_min.insert(prayer_name.clone());
 
                     println!(

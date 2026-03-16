@@ -10,6 +10,26 @@ Features:
 - Auto-start at boot
 - Bilingual UI (English & Bahasa Indonesia)
 
+## Prerequisites (Linux Only)
+
+For Adzan Reminder to show notifications and alerts on Linux, you need to install `libnotify` and `zenity`.
+
+**Debian / Ubuntu / Mint / PopOS:**
+```bash
+sudo apt update && sudo apt install libnotify-bin zenity alsa-utils
+```
+
+**Arch Linux / Manjaro:**
+```bash
+sudo pacman -S libnotify zenity alsa-utils
+```
+
+**Fedora:**
+```bash
+sudo dnf install libnotify zenity alsa-utils
+```
+
+
 ## Install
 
 ### Quick Install (macOS / Linux)

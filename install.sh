@@ -36,9 +36,25 @@ map_os() {
     local os=$1
     case "$os" in
         Darwin) echo "apple-darwin" ;;
-        Linux) echo "unknown-linux-gnu" ;; # Note: Jika Anda cross-compile linux nnti, ubah targetnya di sini
+        Linux) echo "unknown-linux-gnu" ;;
         *) echo "unsupported"; return 1 ;;
     esac
+}
+
+check_linux_dependencies() {
+    local missing=()
+    if ! command -v notify-send &> /dev/null; then
+        missing+=("libnotify")
+    fi
+    if ! command -v zenity &> /dev/null; then
+        missing+=("zenity")
+    fi
+
+    if [ ${#missing[@]} -ne 0 ]; then
+        echo -e "${YELLOW}Peringatan: Dependensi berikut belum terpasang: ${RED}${missing[*]}${NC}"
+        echo -e "${YELLOW}Notifikasi dan alert mungkin tidak berfungsi dengan baik.${NC}"
+        echo -e "${YELLOW}Silakan instal melalui package manager distro Anda (cek README.md).${NC}\n"
+    fi
 }
 
 TARGET_ARCH=$(map_arch "$ARCH")
@@ -58,6 +74,10 @@ TARGET="${TARGET_ARCH}-${TARGET_OS}"
 ASSET_NAME="${BIN_NAME}-${TARGET}.tar.gz"
 
 echo -e "Platform terdeteksi: ${YELLOW}${OS} ${ARCH}${NC} (Target: ${TARGET})"
+
+if [ "$OS" = "Linux" ]; then
+    check_linux_dependencies
+fi
 
 # 2. Mendapatkan versi terbaru (Latest Tag)
 echo -e "Mencari versi terbaru di GitHub..."
