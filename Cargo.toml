@@ -1,6 +1,6 @@
 [package]
 name = "adzan"
-version = "0.2.13"
+version = "0.2.14"
 description = "Aplikasi reminder jadwal sholat untuk Linux & macOS"
 authors = ["Ismail Nur Alam <ismailnuralam@gmail.com>"]
 edition = "2021"
@@ -46,6 +46,7 @@ self_update = { version = "0.43.1", default-features = false, features = [
     "archive-zip",
     "compression-flate2",
     "compression-zip-deflate",
+    "reqwest",
     "rustls",
 ] }
 
