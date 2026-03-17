@@ -16,7 +16,11 @@ jobs:
         include:
           - target: x86_64-apple-darwin
             os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
           - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
 
     steps:
@@ -32,5 +36,14 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev
 
+      - name: Install cross (for Linux arm64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cargo install cross
+
       - name: Run cargo check
-        run: cargo check --target ${{ matrix.target }}
+        run: |
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            cross check --target ${{ matrix.target }}
+          else
+            cargo check --target ${{ matrix.target }}
+          fi
