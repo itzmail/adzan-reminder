@@ -227,3 +227,16 @@ pub fn play_adzan(sound_choice: String, alert_body: String) {
         std::mem::forget(stream_handle);
     });
 }
+
+pub fn get_sound_for_prayer(prayer_name: &str, user_sound_choice: &str) -> String {
+    if user_sound_choice != "mute" {
+        return user_sound_choice.to_string();
+    }
+
+    match prayer_name.to_lowercase().as_str() {
+        "subuh" => "adzan_shubuh".to_string(),
+        "dzuhur" | "ashar" => "adzan_mecca".to_string(),
+        "maghrib" | "isya" => "bedug".to_string(),
+        _ => user_sound_choice.to_string(),
+    }
+}

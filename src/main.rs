@@ -1,4 +1,4 @@
-use adzan_lib::helpers::notification::play_adzan;
+use adzan_lib::helpers::notification::{get_sound_for_prayer, play_adzan};
 use adzan_lib::prayer_time::PrayerTimes;
 use adzan_lib::{AppConfig, PrayerService};
 use atty::Stream;
@@ -296,7 +296,8 @@ async fn run_daemon() {
             if message.contains("sekarang") {
                 if !reminded_exact.contains(&prayer_name) {
                     let alert_msg = adzan_lib::helpers::quotes::get_random_message();
-                    play_adzan(r_config.sound_choice.clone(), alert_msg);
+                    let final_sound = get_sound_for_prayer(&prayer_name, &r_config.sound_choice);
+                    play_adzan(final_sound, alert_msg);
 
                     reminded_exact.insert(prayer_name.clone());
 

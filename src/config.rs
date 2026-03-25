@@ -15,7 +15,7 @@ impl Default for AppConfig {
             selected_city_id: None,
             selected_city_name: None,
             notification_time: 5,
-            sound_choice: "bedug".to_string(),
+            sound_choice: "mute".to_string(),
             language: "en".to_string(),
         }
     }
