@@ -2,7 +2,7 @@ use adzan_lib::helpers::notification::{get_sound_for_prayer, play_adzan};
 use adzan_lib::prayer_time::PrayerTimes;
 use adzan_lib::{AppConfig, PrayerService};
 use atty::Stream;
-use chrono::{Local, Timelike};
+use chrono::{Local, NaiveDate, Timelike};
 use console::style;
 use dirs;
 use std::collections::HashSet;
@@ -274,14 +274,66 @@ async fn run_daemon() {
         }
     };
 
-    let prayer_times = PrayerTimes::from_schedule(&schedule);
+    let mut prayer_times = PrayerTimes::from_schedule(&schedule);
     println!("Jadwal {} berhasil dimuat. Daemon berjalan...\n", city_name);
 
     let mut reminded_five_min: HashSet<String> = HashSet::new();
     let mut reminded_exact: HashSet<String> = HashSet::new();
+    let mut last_tick_time = Local::now();
+    let mut current_date: NaiveDate = Local::now().date_naive();
 
     loop {
-        // Here we read config again so it supports hot-reloading setting
+        let now = Local::now();
+        let elapsed_secs = (now - last_tick_time).num_seconds();
+
+        // Detect OS suspend/resume: if elapsed > 90s, thread was suspended.
+        // Mark all prayers that occurred during the skipped window as already reminded
+        // so they don't fire spuriously on wake.
+        if elapsed_secs > 90 {
+            for &prayer in &["Subuh", "Dzuhur", "Ashar", "Maghrib", "Isya"] {
+                let prayer_time = match prayer {
+                    "Subuh" => prayer_times.subuh,
+                    "Dzuhur" => prayer_times.dzuhur,
+                    "Ashar" => prayer_times.ashar,
+                    "Maghrib" => prayer_times.maghrib,
+                    "Isya" => prayer_times.isya,
+                    _ => continue,
+                };
+                let pt = now
+                    .date_naive()
+                    .and_time(prayer_time)
+                    .and_local_timezone(Local)
+                    .single();
+                if let Some(pt) = pt {
+                    if pt > last_tick_time && pt <= now {
+                        reminded_exact.insert(prayer.to_string());
+                        reminded_five_min.insert(prayer.to_string());
+                        println!("⏩ Skip adzan {} (daemon was suspended)", prayer);
+                    }
+                }
+            }
+        }
+
+        last_tick_time = now;
+
+        // Detect date change — re-fetch schedule for the new day.
+        let today = now.date_naive();
+        if today != current_date {
+            match service.get_today_schedule(&city_id).await {
+                Ok(new_schedule) => {
+                    prayer_times = PrayerTimes::from_schedule(&new_schedule);
+                    current_date = today;
+                    reminded_five_min.clear();
+                    reminded_exact.clear();
+                    println!("📅 Jadwal baru dimuat untuk hari ini.");
+                }
+                Err(e) => {
+                    eprintln!("Gagal refresh jadwal: {}. Coba lagi menit depan.", e);
+                }
+            }
+        }
+
+        // Hot-reload config setiap tick
         let r_config = AppConfig::load().unwrap_or_default();
 
         if let Some(message) = prayer_times.check_reminder(r_config.notification_time) {
@@ -325,14 +377,6 @@ async fn run_daemon() {
                     );
                 }
             }
-        }
-
-        // 3. Reset di tengah malam
-        let now = Local::now();
-        if now.hour() == 0 && now.minute() == 0 {
-            reminded_five_min.clear();
-            reminded_exact.clear();
-            println!("Hari baru — reset reminder.");
         }
 
         std::thread::sleep(Duration::from_secs(60));
