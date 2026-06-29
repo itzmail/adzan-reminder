@@ -353,8 +353,8 @@ async fn run_daemon() {
                 let now = Local::now();
                 let now_naive = now.naive_local().time();
                 let total_secs = {
-                    let next_total = next_time.hour() as i64 * 3600 + next_time.minute() as i64 * 60;
-                    let now_total = now_naive.hour() as i64 * 3600 + now_naive.minute() as i64 * 60;
+                    let next_total = next_time.hour() as i64 * 3600 + next_time.minute() as i64 * 60 + next_time.second() as i64;
+                    let now_total = now_naive.hour() as i64 * 3600 + now_naive.minute() as i64 * 60 + now_naive.second() as i64;
                     (next_total - now_total).max(0)
                 };
                 let h = total_secs / 3600;
@@ -362,8 +362,9 @@ async fn run_daemon() {
                 let s = total_secs % 60;
                 let countdown = format!("{:02}:{:02}:{:02}", h, m, s);
                 let city = r_config.selected_city_name.clone().unwrap_or_default();
-                let mut state = prayer_state.lock().unwrap();
-                *state = Some((next_name.to_string(), countdown, city));
+                if let Ok(mut state) = prayer_state.lock() {
+                    *state = Some((next_name.to_string(), countdown, city));
+                }
             }
         }
 
@@ -439,7 +440,10 @@ fn run_socket_server(
                 Err(_) => return,
             };
             loop {
-                let data = state.lock().unwrap();
+                let data = match state.lock() {
+                    Ok(g) => g,
+                    Err(e) => e.into_inner(),
+                };
                 let (prayer, countdown, city) = match data.as_ref() {
                     Some(d) => d.clone(),
                     None => ("Loading".to_string(), "--:--:--".to_string(), "".to_string()),
