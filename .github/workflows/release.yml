@@ -19,9 +19,11 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-latest
             bin_name: adzan
+            menubar_arch: x86_64
           - target: aarch64-apple-darwin
             os: macos-latest
             bin_name: adzan
+            menubar_arch: arm64
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             bin_name: adzan
@@ -54,11 +56,20 @@ jobs:
             cargo build --release --target ${{ matrix.target }}
           fi
 
+      - name: Build menu bar helper (macOS only)
+        if: matrix.menubar_arch != ''
+        run: bash menubar/build.sh ${{ matrix.menubar_arch }}
+
       - name: Archive binary
         run: |
           cd target/${{ matrix.target }}/release
           cp -r ../../../assets ./
-          tar -czf adzan-${{ matrix.target }}.tar.gz adzan assets/
+          if [ -f "../../adzan-menubar" ]; then
+            cp ../../adzan-menubar ./
+            tar -czf adzan-${{ matrix.target }}.tar.gz adzan adzan-menubar assets/
+          else
+            tar -czf adzan-${{ matrix.target }}.tar.gz adzan assets/
+          fi
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
