@@ -122,6 +122,78 @@ fn run_update() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
+    #[cfg(target_os = "macos")]
+    update_menubar_helper(&bin_name)?;
+
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn update_menubar_helper(asset_prefix: &str) -> Result<(), Box<dyn std::error::Error>> {
+    use std::io::Read;
+
+    let install_dir = dirs::home_dir()
+        .ok_or("Tidak bisa menemukan home dir")?
+        .join(".local/bin");
+
+    let helper_path = install_dir.join("adzan-menubar");
+    if !helper_path.exists() {
+        return Ok(());
+    }
+
+    println!("Mengupdate adzan-menubar...");
+
+    // Get latest release info dari GitHub API
+    let release_url = format!(
+        "https://api.github.com/repos/itzmail/adzan-reminder/releases/latest"
+    );
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("adzan-updater")
+        .build()?;
+    let release: serde_json::Value = client.get(&release_url).send()?.json()?;
+
+    let tag = release["tag_name"]
+        .as_str()
+        .ok_or("Gagal mendapatkan tag rilis")?;
+
+    let asset_name = format!("{}.tar.gz", asset_prefix);
+    let download_url = format!(
+        "https://github.com/itzmail/adzan-reminder/releases/download/{}/{}",
+        tag, asset_name
+    );
+
+    // Download archive ke tempdir
+    let tmp_dir = tempfile::tempdir()?;
+    let archive_path = tmp_dir.path().join(&asset_name);
+
+    let mut resp = client.get(&download_url).send()?;
+    let mut file = std::fs::File::create(&archive_path)?;
+    let mut buf = Vec::new();
+    resp.read_to_end(&mut buf)?;
+    std::io::Write::write_all(&mut file, &buf)?;
+
+    // Extract adzan-menubar dari archive
+    let archive_file = std::fs::File::open(&archive_path)?;
+    let decoder = flate2::read::GzDecoder::new(archive_file);
+    let mut archive = tar::Archive::new(decoder);
+
+    for entry in archive.entries()? {
+        let mut entry = entry?;
+        let path = entry.path()?.to_owned();
+        if path.file_name().and_then(|n| n.to_str()) == Some("adzan-menubar") {
+            entry.unpack(&helper_path)?;
+            break;
+        }
+    }
+
+    // Set executable
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&helper_path, std::fs::Permissions::from_mode(0o755))?;
+    }
+
+    println!("✅ adzan-menubar berhasil diupdate!");
     Ok(())
 }
 

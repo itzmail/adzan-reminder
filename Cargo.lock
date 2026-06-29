@@ -10,7 +10,7 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "adzan"
-version = "0.2.16"
+version = "0.2.17"
 dependencies = [
  "async-trait",
  "atty",
@@ -19,6 +19,7 @@ dependencies = [
  "console",
  "crossterm",
  "dirs",
+ "flate2",
  "fuzzy-matcher",
  "mockall",
  "rand 0.8.5",
@@ -28,6 +29,8 @@ dependencies = [
  "self_update",
  "serde",
  "serde_json",
+ "tar",
+ "tempfile",
  "thiserror 2.0.17",
  "tokio",
  "tui-big-text",
