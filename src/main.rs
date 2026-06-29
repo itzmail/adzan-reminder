@@ -265,6 +265,17 @@ async fn run_daemon() {
 
     let city_name = config.selected_city_name.as_deref().unwrap_or("Kota");
 
+    #[cfg(target_os = "macos")]
+    let prayer_state: std::sync::Arc<std::sync::Mutex<Option<(String, String, String)>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(None));
+
+    #[cfg(target_os = "macos")]
+    {
+        let state = prayer_state.clone();
+        std::thread::spawn(move || run_socket_server(state));
+        spawn_menubar_helper();
+    }
+
     let service = PrayerService::new();
     let schedule = match service.get_today_schedule(&city_id).await {
         Ok(s) => s,
@@ -336,6 +347,26 @@ async fn run_daemon() {
         // Hot-reload config setiap tick
         let r_config = AppConfig::load().unwrap_or_default();
 
+        #[cfg(target_os = "macos")]
+        {
+            if let Some((next_name, next_time)) = prayer_times.next_prayer() {
+                let now = Local::now();
+                let now_naive = now.naive_local().time();
+                let total_secs = {
+                    let next_total = next_time.hour() as i64 * 3600 + next_time.minute() as i64 * 60;
+                    let now_total = now_naive.hour() as i64 * 3600 + now_naive.minute() as i64 * 60;
+                    (next_total - now_total).max(0)
+                };
+                let h = total_secs / 3600;
+                let m = (total_secs % 3600) / 60;
+                let s = total_secs % 60;
+                let countdown = format!("{:02}:{:02}:{:02}", h, m, s);
+                let city = r_config.selected_city_name.clone().unwrap_or_default();
+                let mut state = prayer_state.lock().unwrap();
+                *state = Some((next_name.to_string(), countdown, city));
+            }
+        }
+
         if let Some(message) = prayer_times.check_reminder(r_config.notification_time) {
             // Format tepat waktu : "Waktu {prayer} sekarang! ..."  → ambil kata ke-2
             // Format 5 menit     : "{prayer} 5 menit lagi! ..."    → ambil kata ke-1
@@ -381,6 +412,61 @@ async fn run_daemon() {
 
         std::thread::sleep(Duration::from_secs(60));
     }
+}
+
+#[cfg(target_os = "macos")]
+fn run_socket_server(
+    prayer_state: std::sync::Arc<std::sync::Mutex<Option<(String, String, String)>>>,
+) {
+    use std::io::Write;
+    use std::os::unix::net::UnixListener;
+
+    let socket_path = "/tmp/adzan-menubar.sock";
+    let _ = std::fs::remove_file(socket_path);
+    let listener = match UnixListener::bind(socket_path) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("Menu bar socket error: {}", e);
+            return;
+        }
+    };
+
+    for stream in listener.incoming() {
+        let state = prayer_state.clone();
+        std::thread::spawn(move || {
+            let mut stream = match stream {
+                Ok(s) => s,
+                Err(_) => return,
+            };
+            loop {
+                let data = state.lock().unwrap();
+                let (prayer, countdown, city) = match data.as_ref() {
+                    Some(d) => d.clone(),
+                    None => ("Loading".to_string(), "--:--:--".to_string(), "".to_string()),
+                };
+                drop(data);
+                let line = format!(
+                    "{{\"prayer\":\"{}\",\"countdown\":\"{}\",\"city\":\"{}\"}}\n",
+                    prayer, countdown, city
+                );
+                if stream.write_all(line.as_bytes()).is_err() {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_secs(5));
+            }
+        });
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn spawn_menubar_helper() -> Option<std::process::Child> {
+    // Look for adzan-menubar in same dir as current executable
+    let exe = std::env::current_exe().ok()?;
+    let helper = exe.parent()?.join("adzan-menubar");
+    if !helper.exists() {
+        return None;
+    }
+    std::process::Command::new(&helper).spawn().ok()
 }
 
 pub fn setup_autostart() -> Result<String, Box<dyn std::error::Error>> {
