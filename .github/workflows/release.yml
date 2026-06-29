@@ -57,8 +57,10 @@ jobs:
           fi
 
       - name: Build menu bar helper (macOS only)
-        if: matrix.menubar_arch != ''
-        run: bash menubar/build.sh ${{ matrix.menubar_arch }}
+        if: ${{ matrix.menubar_arch != '' }}
+        run: |
+          bash menubar/build.sh ${{ matrix.menubar_arch }}
+          test -f target/adzan-menubar
 
       - name: Archive binary
         run: |
