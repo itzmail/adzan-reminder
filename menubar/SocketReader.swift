@@ -38,7 +38,7 @@ class SocketReader {
             if connected != 0 { close(sock); sleep(2); continue }
 
             // Read newline-delimited JSON lines
-            let file = fdopen(sock, "r")!
+            guard let file = fdopen(sock, "r") else { close(sock); sleep(2); continue }
             var buffer = [CChar](repeating: 0, count: 4096)
             while fgets(&buffer, 4096, file) != nil {
                 let line = String(cString: buffer).trimmingCharacters(in: .whitespacesAndNewlines)
