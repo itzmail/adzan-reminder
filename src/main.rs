@@ -421,22 +421,26 @@ async fn run_daemon() {
 
         #[cfg(target_os = "macos")]
         {
-            if let Some((next_name, next_time)) = prayer_times.next_prayer() {
-                let now = Local::now();
-                let now_naive = now.naive_local().time();
-                let total_secs = {
-                    let next_total = next_time.hour() as i64 * 3600 + next_time.minute() as i64 * 60 + next_time.second() as i64;
-                    let now_total = now_naive.hour() as i64 * 3600 + now_naive.minute() as i64 * 60 + now_naive.second() as i64;
-                    (next_total - now_total).max(0)
-                };
-                let h = total_secs / 3600;
-                let m = (total_secs % 3600) / 60;
-                let s = total_secs % 60;
-                let countdown = format!("{:02}:{:02}:{:02}", h, m, s);
-                let city = r_config.selected_city_name.clone().unwrap_or_default();
-                if let Ok(mut state) = prayer_state.lock() {
-                    *state = Some((next_name.to_string(), countdown, city));
-                }
+            let now = Local::now();
+            let now_naive = now.naive_local().time();
+            let city = r_config.selected_city_name.clone().unwrap_or_default();
+            let (next_name, total_secs) = if let Some((name, next_time)) = prayer_times.next_prayer() {
+                let next_total = next_time.hour() as i64 * 3600 + next_time.minute() as i64 * 60 + next_time.second() as i64;
+                let now_total = now_naive.hour() as i64 * 3600 + now_naive.minute() as i64 * 60 + now_naive.second() as i64;
+                (name.to_string(), (next_total - now_total).max(0))
+            } else {
+                // All prayers passed — countdown to Subuh tomorrow
+                let subuh = prayer_times.subuh;
+                let secs_until_midnight = 86400 - (now_naive.hour() as i64 * 3600 + now_naive.minute() as i64 * 60 + now_naive.second() as i64);
+                let secs_subuh = subuh.hour() as i64 * 3600 + subuh.minute() as i64 * 60 + subuh.second() as i64;
+                ("Subuh (besok)".to_string(), secs_until_midnight + secs_subuh)
+            };
+            let h = total_secs / 3600;
+            let m = (total_secs % 3600) / 60;
+            let s = total_secs % 60;
+            let countdown = format!("{:02}:{:02}:{:02}", h, m, s);
+            if let Ok(mut state) = prayer_state.lock() {
+                *state = Some((next_name, countdown, city));
             }
         }
 
