@@ -9,6 +9,14 @@ Features:
 - Background daemon
 - Auto-start at boot
 - Bilingual UI (English & Bahasa Indonesia)
+- macOS menu bar icon with live countdown
+
+### macOS Menu Bar
+
+When the daemon is running, a 🕌 icon appears in your menu bar. Click it to see:
+- Countdown to the next prayer
+- Your configured city
+- A Settings shortcut to open the TUI
 
 ## Prerequisites (Linux Only)
 

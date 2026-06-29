@@ -122,7 +122,14 @@ if curl --fail -sL "$DOWNLOAD_URL" -o "$TMP_DIR/$ASSET_NAME"; then
     echo -e "Memasang $BIN_NAME ke $INSTALL_DIR..."
     mv "$TMP_DIR/$BIN_NAME" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/$BIN_NAME"
-    
+
+    # Install adzan-menubar (macOS menu bar helper)
+    if [ -f "$TMP_DIR/adzan-menubar" ]; then
+        cp "$TMP_DIR/adzan-menubar" "$INSTALL_DIR/adzan-menubar"
+        chmod +x "$INSTALL_DIR/adzan-menubar"
+        echo -e "${GREEN}adzan-menubar berhasil dipasang!${NC}"
+    fi
+
     # Copy assets jika ada
     if [ -d "$TMP_DIR/assets" ]; then
         echo -e "Memasang assets ke $ASSETS_DIR..."
