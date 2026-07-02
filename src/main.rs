@@ -18,17 +18,13 @@ async fn main() {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() > 1 {
-        // Ada argumen → langsung jalankan command
         handle_command(&args[1..]).await;
     } else {
-        // Tidak ada argumen
         if atty::is(Stream::Stdout) {
-            // Ada terminal → tampilkan TUI (Terminal User Interface)
             if let Err(e) = ui::run_tui().await {
                 eprintln!("TUI Error: {}", e);
             }
         } else {
-            // Tidak ada terminal → otomatis jalan daemon (untuk launchd/systemd)
             println!("Adzan Reminder daemon jalan di background");
             run_daemon().await;
         }
@@ -75,7 +71,6 @@ async fn handle_command(args: &[String]) {
         }
         unknown => {
             if unknown.starts_with('-') {
-                // Flag yang tidak dikenal — pesan singkat, tanpa full help
                 eprintln!(
                     "Flag '{}' tidak dikenal. Gunakan --help untuk bantuan.",
                     unknown
@@ -92,8 +87,7 @@ async fn handle_command(args: &[String]) {
 fn run_update() -> Result<(), Box<dyn std::error::Error>> {
     println!("Pencarian update terbaru dari GitHub...");
 
-    // bin_name harus cocok dengan prefix nama asset di GitHub release
-    // Format: adzan-{target}, contoh: adzan-aarch64-apple-darwin
+    // bin_name must match the asset name prefix in the GitHub release: adzan-{target}
     let target = self_update::get_target();
     let bin_name = format!("adzan-{}", target);
 
@@ -143,7 +137,6 @@ fn update_menubar_helper(asset_prefix: &str) -> Result<(), Box<dyn std::error::E
 
     println!("Mengupdate adzan-menubar...");
 
-    // Get latest release info dari GitHub API
     let release_url = format!(
         "https://api.github.com/repos/itzmail/adzan-reminder/releases/latest"
     );
@@ -162,7 +155,6 @@ fn update_menubar_helper(asset_prefix: &str) -> Result<(), Box<dyn std::error::E
         tag, asset_name
     );
 
-    // Download archive ke tempdir
     let tmp_dir = tempfile::tempdir()?;
     let archive_path = tmp_dir.path().join(&asset_name);
 
@@ -172,7 +164,6 @@ fn update_menubar_helper(asset_prefix: &str) -> Result<(), Box<dyn std::error::E
     resp.read_to_end(&mut buf)?;
     std::io::Write::write_all(&mut file, &buf)?;
 
-    // Extract adzan-menubar dari archive
     let archive_file = std::fs::File::open(&archive_path)?;
     let decoder = flate2::read::GzDecoder::new(archive_file);
     let mut archive = tar::Archive::new(decoder);
@@ -186,7 +177,6 @@ fn update_menubar_helper(asset_prefix: &str) -> Result<(), Box<dyn std::error::E
         }
     }
 
-    // Set executable
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -252,7 +242,6 @@ async fn show_today() {
         println!("📍 {}", schedule.data.kabko);
         println!("{}", "─".repeat(38));
 
-        // Nama sholat (dari API) — tetap bahasa Arab/Indonesia
         let list_jadwal: [(&str, &str); 5] = [
             ("Subuh", &jadwal.subuh),
             ("Dzuhur", &jadwal.dzuhur),
@@ -261,7 +250,6 @@ async fn show_today() {
             ("Isya", &jadwal.isya),
         ];
 
-        // Hitung next prayer untuk di-highlight
         let prayer_times = PrayerTimes::from_schedule(&schedule);
         let next_name = prayer_times.next_prayer().map(|(n, _)| n);
 
@@ -272,7 +260,6 @@ async fn show_today() {
 
         println!("{}", "─".repeat(38));
 
-        // Tampilkan waktu tersisa ke sholat berikutnya
         match prayer_times.next_prayer() {
             Some((next, next_time)) => {
                 let now = Local::now();
@@ -369,8 +356,8 @@ async fn run_daemon() {
         let now = Local::now();
         let elapsed_secs = (now - last_tick_time).num_seconds();
 
-        // Detect OS suspend/resume: if elapsed > 90s, thread was suspended.
-        // Mark all prayers that occurred during the skipped window as already reminded
+        // Detect OS suspend/resume: if elapsed > 90s, the thread was suspended.
+        // Mark prayers that occurred during the skipped window as already reminded
         // so they don't fire spuriously on wake.
         if elapsed_secs > 90 {
             for &prayer in &["Subuh", "Dzuhur", "Ashar", "Maghrib", "Isya"] {
@@ -399,7 +386,6 @@ async fn run_daemon() {
 
         last_tick_time = now;
 
-        // Detect date change — re-fetch schedule for the new day.
         let today = now.date_naive();
         if today != current_date {
             match service.get_today_schedule(&city_id).await {
@@ -416,7 +402,6 @@ async fn run_daemon() {
             }
         }
 
-        // Hot-reload config setiap tick
         let r_config = AppConfig::load().unwrap_or_default();
 
         #[cfg(target_os = "macos")]
@@ -432,7 +417,7 @@ async fn run_daemon() {
                 let secs_remaining = (next_total - now_total).max(0) as u64;
                 (name.to_string(), now_epoch + secs_remaining)
             } else {
-                // All prayers passed — countdown to Subuh tomorrow
+                // All prayers have passed — count down to tomorrow's Subuh
                 let subuh = prayer_times.subuh;
                 let secs_until_midnight = 86400 - (now_naive.hour() as i64 * 3600 + now_naive.minute() as i64 * 60 + now_naive.second() as i64);
                 let secs_subuh = subuh.hour() as i64 * 3600 + subuh.minute() as i64 * 60 + subuh.second() as i64;
@@ -445,8 +430,8 @@ async fn run_daemon() {
         }
 
         if let Some(message) = prayer_times.check_reminder(r_config.notification_time) {
-            // Format tepat waktu : "Waktu {prayer} sekarang! ..."  → ambil kata ke-2
-            // Format 5 menit     : "{prayer} 5 menit lagi! ..."    → ambil kata ke-1
+            // Exact-time message: "Waktu {prayer} sekarang! ..." → take word 2
+            // 5-min-before message: "{prayer} 5 menit lagi! ..." → take word 1
             let prayer_name = if message.contains("sekarang") {
                 message.split(' ').nth(1).unwrap_or("Sholat").to_string()
             } else {
@@ -548,7 +533,7 @@ fn run_socket_server(
 
 #[cfg(target_os = "macos")]
 fn spawn_menubar_helper() -> Option<std::process::Child> {
-    // Look for adzan-menubar in same dir as current executable
+    // Look for adzan-menubar in the same directory as the current executable
     let exe = std::env::current_exe().ok()?;
     let helper = exe.parent()?.join("adzan-menubar");
     if !helper.exists() {
@@ -568,7 +553,6 @@ pub fn setup_autostart() -> Result<String, Box<dyn std::error::Error>> {
     #[cfg(target_os = "macos")]
     {
         let mut msg = setup_launchd()?;
-        // Try to load, silently failing if already loaded
         let plist_path = dirs::home_dir()
             .unwrap()
             .join("Library/LaunchAgents/com.adzan.reminder.plist");
@@ -647,9 +631,7 @@ pub fn restart_daemon() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(target_os = "macos")]
     {
-        // MacOS launchctl doesn't elegantly "restart" agents without unloading/loading
-        // using the plist path directly, unless using modern bootout/bootstrap or kickstart.
-        // We will safely unload then load.
+        // launchctl has no direct "restart" for plist-based agents, so unload then load.
         let plist_path = dirs::home_dir()
             .unwrap()
             .join("Library/LaunchAgents/com.adzan.reminder.plist");
@@ -764,7 +746,6 @@ fn setup_launchd() -> Result<String, Box<dyn std::error::Error>> {
 }
 
 fn show_about() {
-    // Animasi loading sederhana
     print!("Memuat info pembuat");
     for _ in 0..3 {
         print!(".");

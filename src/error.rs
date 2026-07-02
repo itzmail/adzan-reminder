@@ -31,7 +31,6 @@ impl From<AppError> for String {
     }
 }
 
-// Optional: convert from IO errors (e.g., when reading local files)
 impl From<std::io::Error> for AppError {
     fn from(err: std::io::Error) -> Self {
         AppError::Other(err.to_string())

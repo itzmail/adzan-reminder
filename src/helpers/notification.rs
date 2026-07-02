@@ -136,7 +136,7 @@ fn show_macos_alert(title: &str, body: &str) -> bool {
 pub fn show_linux_reminder(title: &str, body: &str) {
     let _ = std::process::Command::new("notify-send")
         .arg("-t")
-        .arg("10000") // 10 detik
+        .arg("10000")
         .arg(title)
         .arg(body)
         .output();
@@ -144,7 +144,6 @@ pub fn show_linux_reminder(title: &str, body: &str) {
 
 #[cfg(target_os = "linux")]
 fn show_linux_alert(title: &str, body: &str) -> bool {
-    // Menggunakan zenity untuk dialog interaktif
     let output = std::process::Command::new("zenity")
         .arg("--question")
         .arg("--title")
@@ -160,7 +159,7 @@ fn show_linux_alert(title: &str, body: &str) -> bool {
         .output();
 
     if let Ok(out) = output {
-        // Zenity return code 0 untuk OK, 1 untuk Cancel/Close
+        // zenity exit code 0 = OK, 1 = Cancel/Close
         return out.status.success();
     }
 

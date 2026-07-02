@@ -39,7 +39,7 @@ pub struct App {
     pub selected_settings_index: usize,
     pub setting_state: SettingState,
     pub all_cities: Vec<Kota>,
-    pub latest_version: Option<String>, // None = belum dicek, Some = versi terbaru di GitHub
+    pub latest_version: Option<String>, // None = not checked yet, Some = latest version on GitHub
 }
 
 impl App {
@@ -48,7 +48,6 @@ impl App {
         let mut schedule = None;
 
         let service = PrayerService::new();
-        // Load all cities mapping
         let all_cities = service.get_cities().await.unwrap_or_default();
 
         if let Some(city_id) = &config.selected_city_id {
@@ -57,7 +56,7 @@ impl App {
             }
         }
 
-        // Ambil versi terbaru dari GitHub di background thread (non-blocking)
+        // Fetch the latest version from GitHub on a background thread (non-blocking)
         let latest_version: Option<String> = std::thread::spawn(|| {
             let target = self_update::get_target();
             let bin_name = format!("adzan-{}", target);
@@ -108,7 +107,6 @@ impl App {
                             self.config.selected_city_name = Some(selected_city.lokasi.clone());
                             let _ = self.config.save();
 
-                            // Reload schedule for new city
                             let service = PrayerService::new();
                             if let Ok(sched) = service.get_today_schedule(&selected_city.id).await {
                                 self.schedule = Some(sched);
@@ -210,7 +208,7 @@ impl App {
                         if *selected_index > 0 {
                             *selected_index -= 1;
                         } else {
-                            *selected_index = 2; // 0: Start, 1: Stop, 2: Cancel
+                            *selected_index = 2; // 0: Install, 1: Uninstall, 2: Cancel
                         }
                     }
                     KeyCode::Down | KeyCode::Char('j') => {
@@ -336,7 +334,6 @@ impl App {
                         };
                     }
                     1 => {
-                        // Update daemon trigger
                         let result = crate::restart_daemon();
                         let msg = match result {
                         Ok(_) => "Notifikasi / Peringatan Awal berhasil diperbarui & service di-restart!".to_string(),

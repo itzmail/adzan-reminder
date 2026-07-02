@@ -23,28 +23,26 @@ fn render_dashboard(f: &mut Frame, app: &mut App) {
     let t = crate::i18n::get(&app.config.language);
     let current_ver = env!("CARGO_PKG_VERSION");
 
-    // Cek apakah ada update yang tersedia
     let update_banner = match &app.latest_version {
         Some(latest) if latest.trim_start_matches('v') != current_ver => Some(latest.clone()),
         _ => None,
     };
 
-    // Jika ada update, tambah 1 baris ekstra untuk banner
+    // Extra row for the update banner when one is present
     let header_height = if update_banner.is_some() { 6 } else { 5 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
             [
-                Constraint::Length(header_height), // Header
-                Constraint::Length(5),             // Schedule Summary
-                Constraint::Min(0),                // Menu
+                Constraint::Length(header_height),
+                Constraint::Length(5),
+                Constraint::Min(0),
             ]
             .as_ref(),
         )
         .split(f.area());
 
-    // Header
     let header_text = if let Some(ref latest) = update_banner {
         format!(
             "\n A D Z A N   R E M I N D E R   C L I \n\n ✨ Update tersedia: v{} → {} | Jalankan: adzan update ",
@@ -73,7 +71,6 @@ fn render_dashboard(f: &mut Frame, app: &mut App) {
         .block(Block::default().borders(Borders::ALL));
     f.render_widget(header, chunks[0]);
 
-    // Schedule Summary
     let mut schedule_lines = vec![];
     if let Some(ref schedule) = app.schedule {
         let kabko = &schedule.data.kabko;
@@ -119,7 +116,6 @@ fn render_dashboard(f: &mut Frame, app: &mut App) {
     );
     f.render_widget(summary, chunks[1]);
 
-    // Menu
     let items = vec![
         ListItem::new(t.menu_countdown),
         ListItem::new(t.menu_settings),
@@ -157,9 +153,9 @@ fn render_countdown(f: &mut Frame, app: &mut App) {
         .direction(Direction::Vertical)
         .constraints(
             [
-                Constraint::Length(5), // Highlight Next Prayer
-                Constraint::Min(4),    // Big Text Clock
-                Constraint::Min(0),    // Padding below
+                Constraint::Length(5),
+                Constraint::Min(4),
+                Constraint::Min(0),
             ]
             .as_ref(),
         )
@@ -249,10 +245,7 @@ fn render_settings(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
-            [
-                Constraint::Length(5), // Header
-                Constraint::Min(0),    // Split Body
-            ]
+            [Constraint::Length(5), Constraint::Min(0)]
             .as_ref(),
         )
         .split(f.area());
@@ -270,10 +263,7 @@ fn render_settings(f: &mut Frame, app: &mut App) {
     let body_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints(
-            [
-                Constraint::Percentage(50), // Menu Settings
-                Constraint::Percentage(50), // Tooltip
-            ]
+            [Constraint::Percentage(50), Constraint::Percentage(50)]
             .as_ref(),
         )
         .split(chunks[1]);
@@ -364,7 +354,6 @@ fn render_settings(f: &mut Frame, app: &mut App) {
         .style(Style::default().fg(Color::DarkGray));
     f.render_widget(footer, right_chunk[1]);
 
-    // Draw modals on top if we are in a special state
     match &app.setting_state {
         crate::ui::app::SettingState::SearchingCity {
             query,
@@ -527,9 +516,9 @@ fn render_about(f: &mut Frame, app: &mut App) {
         .direction(Direction::Vertical)
         .constraints(
             [
-                Constraint::Length(5), // Header
-                Constraint::Min(0),    // Body
-                Constraint::Length(2), // Footer
+                Constraint::Length(5),
+                Constraint::Min(0),
+                Constraint::Length(2),
             ]
             .as_ref(),
         )

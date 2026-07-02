@@ -34,7 +34,6 @@ pub fn get_random_message() -> String {
 
     let mut rng = rand::thread_rng();
 
-    // Pilih secara acak antara hadist (0) atau quote (1)
     let is_hadist: bool = rng.gen_bool(0.5);
 
     if is_hadist && !bank.hadist_prioritas.is_empty() {
@@ -47,6 +46,6 @@ pub fn get_random_message() -> String {
         }
     }
 
-    // Fallback jika json kosong
+    // Fallback if the message bank is empty
     "Waktunya sholat! Tinggalkan urusan dunia sejenak.".to_string()
 }

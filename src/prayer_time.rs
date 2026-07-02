@@ -15,7 +15,7 @@ pub struct PrayerTimes {
 
 impl PrayerTimes {
     pub fn from_schedule(schedule: &crate::domain::entities::JadwalResponse) -> Self {
-        // Ambil jadwal hari ini (key pertama dari HashMap)
+        // Take today's schedule (first key in the HashMap)
         let jadwal_map = &schedule.data.jadwal;
         let default_jadwal = JadwalSholat::default();
         let today_jadwal = jadwal_map.values().next().unwrap_or(&default_jadwal);
@@ -69,16 +69,16 @@ impl PrayerTimes {
                 _ => continue,
             };
 
-            // Konversi ke total menit dari tengah malam
+            // Convert to total minutes since midnight
             let prayer_minutes = prayer_time.hour() as i32 * 60 + prayer_time.minute() as i32;
             let now_minutes = now.hour() as i32 * 60 + now.minute() as i32;
 
-            // Tepat waktu (toleransi 1 menit)
+            // Exact time (1-minute tolerance via the tick interval)
             if now_minutes == prayer_minutes {
                 return Some(format!("Waktu {} sekarang! Ayo sholat 🕌", prayer));
             }
 
-            // X menit sebelum
+            // N minutes before
             if notification_time > 0 && now_minutes == prayer_minutes - (notification_time as i32) {
                 return Some(format!(
                     "{} {} menit lagi! Siap-siap sholat yuk 🕌",

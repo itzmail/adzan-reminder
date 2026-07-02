@@ -12,18 +12,15 @@ use std::time::Duration;
 use std::{error::Error, io};
 
 pub async fn run_tui() -> Result<(), Box<dyn Error>> {
-    // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // create app and run it
     let mut app = App::new().await;
     let res = run_app(&mut terminal, &mut app).await;
 
-    // restore terminal
     disable_raw_mode()?;
     execute!(
         terminal.backend_mut(),

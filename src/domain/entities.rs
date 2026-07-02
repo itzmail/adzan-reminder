@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::helpers::serde_helpers::string_or_null;
 use serde::{Deserialize, Serialize};
 
-/// Entity untuk satu kota/kabupaten
+/// Entity for a single city/regency
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Kota {
     #[serde(deserialize_with = "string_or_null")]
@@ -13,14 +13,14 @@ pub struct Kota {
     pub lokasi: String,
 }
 
-/// Response list kota
+/// Response for the city list
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DaftarKotaResponse {
     pub status: bool,
     pub data: Vec<Kota>,
 }
 
-/// Koordinat lokasi (optional, kalau nanti mau pakai)
+/// Location coordinates (unused currently)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Koordinat {
     pub lat: f64,
@@ -29,7 +29,7 @@ pub struct Koordinat {
     pub bujur: String,
 }
 
-/// Jadwal sholat satu hari
+/// One day's prayer schedule
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct JadwalSholat {
     pub tanggal: String,
@@ -43,7 +43,7 @@ pub struct JadwalSholat {
     pub isya: String,
 }
 
-/// Data utama jadwal
+/// Main schedule data
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct JadwalData {
     pub id: String,
@@ -52,7 +52,7 @@ pub struct JadwalData {
     pub jadwal: HashMap<String, JadwalSholat>,
 }
 
-/// Response jadwal harian
+/// Response for the daily schedule
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct JadwalResponse {
     pub status: bool,
@@ -102,7 +102,6 @@ mod tests {
                 assert_eq!(response.data.kabko, "KOTA KEDIRI");
                 assert_eq!(response.data.prov, "JAWA TIMUR");
 
-                // Test jadwal untuk tanggal 2025-12-30
                 let jadwal_hari = response.data.jadwal.get("2025-12-30").unwrap();
                 assert_eq!(jadwal_hari.tanggal, "Selasa, 30/12/2025");
                 assert_eq!(jadwal_hari.imsak, "03:44");
