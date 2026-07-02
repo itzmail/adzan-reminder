@@ -89,14 +89,13 @@ fn show_macos_alert(title: &str, body: &str) -> bool {
     let safe_title = title.replace("\"", "\\\"");
     let safe_body = body.replace("\"", "\\\"");
 
+    // Any way the dialog closes (button press or 120s timeout) stops the sound.
     let script = match resolve_icon_path() {
         Some(icon_path) => format!(
             r#"
         try
-            set dialogResult to display dialog "{safe_body}" with title "{safe_title}" buttons {{"Tutup & Matikan Audio", "Biarkan"}} default button "Tutup & Matikan Audio" with icon POSIX file "{icon_path}" giving up after 120
-            if button returned of dialogResult is "Tutup & Matikan Audio" then
-                return "STOP"
-            end if
+            display dialog "{safe_body}" with title "{safe_title}" buttons {{"Tutup"}} default button "Tutup" with icon POSIX file "{icon_path}" giving up after 120
+            return "STOP"
         on error errStr
             return "ERROR: " & errStr
         end try
@@ -105,10 +104,8 @@ fn show_macos_alert(title: &str, body: &str) -> bool {
         None => format!(
             r#"
         try
-            set dialogResult to display dialog "{safe_body}" with title "{safe_title}" buttons {{"Tutup & Matikan Audio", "Biarkan"}} default button "Tutup & Matikan Audio" giving up after 120
-            if button returned of dialogResult is "Tutup & Matikan Audio" then
-                return "STOP"
-            end if
+            display dialog "{safe_body}" with title "{safe_title}" buttons {{"Tutup"}} default button "Tutup" giving up after 120
+            return "STOP"
         on error errStr
             return "ERROR: " & errStr
         end try
@@ -129,7 +126,8 @@ fn show_macos_alert(title: &str, body: &str) -> bool {
         }
     }
 
-    false
+    // Dialog gone (process killed, no output) — stop sound too.
+    true
 }
 
 #[cfg(target_os = "linux")]
@@ -145,25 +143,19 @@ pub fn show_linux_reminder(title: &str, body: &str) {
 #[cfg(target_os = "linux")]
 fn show_linux_alert(title: &str, body: &str) -> bool {
     let output = std::process::Command::new("zenity")
-        .arg("--question")
+        .arg("--info")
         .arg("--title")
         .arg(title)
         .arg("--text")
         .arg(body)
         .arg("--ok-label")
-        .arg("Tutup & Matikan Audio")
-        .arg("--cancel-label")
-        .arg("Biarkan")
+        .arg("Tutup")
         .arg("--timeout")
         .arg("120")
         .output();
 
-    if let Ok(out) = output {
-        // zenity exit code 0 = OK, 1 = Cancel/Close
-        return out.status.success();
-    }
-
-    false
+    // Any close (OK, window X, or 120s timeout) stops the sound.
+    output.is_ok()
 }
 
 pub fn play_adzan(sound_choice: String, alert_body: String) {
